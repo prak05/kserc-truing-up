@@ -10,7 +10,7 @@ const config: Config = {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ['var(--font-noto-sans)', 'sans-serif'],
+				sans: ['Aadhunik', 'var(--font-noto-sans)', 'sans-serif'],
 				serif: ['var(--font-eb-garamond)', 'serif'],
 				mono: ['var(--font-source-code-pro)', 'monospace'],
 			},

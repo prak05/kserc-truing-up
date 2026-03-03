@@ -19,15 +19,6 @@ export async function runOcrFallbackChain(fileBuffer: Buffer, mimeType: string):
         console.warn("[OCR Chain] Stage 1 Failed", e.message);
     }
 
-    // Stage 2: OpenRouter Vision (meta-llama/llama-3.2-11b-vision-instruct:free)
-    try {
-        console.log("[OCR Chain] Stage 2: Attempting OpenRouter Llama Vision...");
-        return await extractWithOpenRouterVision(fileBuffer, mimeType);
-    } catch (e: any) {
-        errors.push(`OpenRouter Error: ${e.message}`);
-        console.warn("[OCR Chain] Stage 2 Failed", e.message);
-    }
-
     // Stage 3: OCR.space (Dedicated Free OCR API)
     try {
         console.log("[OCR Chain] Stage 3: Attempting OCR.space...");
@@ -35,15 +26,6 @@ export async function runOcrFallbackChain(fileBuffer: Buffer, mimeType: string):
     } catch (e: any) {
         errors.push(`OCR.space Error: ${e.message}`);
         console.warn("[OCR Chain] Stage 3 Failed", e.message);
-    }
-
-    // Stage 4: Optiic (Final Free Fallback)
-    try {
-        console.log("[OCR Chain] Stage 4: Attempting Optiic...");
-        return await extractWithOptiic(fileBuffer, mimeType);
-    } catch (e: any) {
-        errors.push(`Optiic Error: ${e.message}`);
-        console.warn("[OCR Chain] Stage 4 Failed", e.message);
     }
 
     // If all 4 free-tiers failed, throw a compiled error report

@@ -31,13 +31,16 @@ export async function extractWithOcrSpace(
     });
 
     const json = await resp.json() as any;
-    if (json.IsErroredOnProcessing) {
-        throw new Error(`OCR.space error: ${json.ErrorMessage.join(', ')}`);
-    }
-
     // OCR.space may return multiple pages
     if (!json.ParsedResults || json.ParsedResults.length === 0) {
+        if (json.IsErroredOnProcessing) {
+            throw new Error(`OCR.space error: ${json.ErrorMessage.join(', ')}`);
+        }
         return "";
+    }
+
+    if (json.IsErroredOnProcessing) {
+        console.warn(`[OCR.space] Partial error: ${json.ErrorMessage.join(', ')}. Continuing with extracted pages.`);
     }
 
     const texts = json.ParsedResults.map((r: any) => r.ParsedText).join("\n");

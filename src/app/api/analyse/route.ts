@@ -6,35 +6,22 @@ import {
 } from '@/lib/formulas';
 import { callLLM, KSERC_SYSTEM_PROMPT, buildPrudencePrompt } from '@/lib/llm';
 import { retrieveContext } from '@/lib/rag';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
     try {
         const { caseId, aicpi, licenseeName } = await req.json();
 
-        // 1. Load case data from Supabase
-        const { data: caseData, error: caseErr } = await supabase
-            .from('truing_cases')
-            .select('*, licensees(name, short_name)')
-            .eq('id', caseId)
-            .single();
+        // 1. Load case data from local Db
+        const caseData = db.getCase(caseId);
+        if (!caseData) throw new Error("Case not found");
 
-        if (caseErr) throw new Error("Case not found");
+        const costHeads = db.getCostHeads(caseId);
+        const revenueData = db.getRevenueData(caseId);
 
-        const { data: costHeads } = await supabase
-            .from('cost_heads')
-            .select('*')
-            .eq('case_id', caseId);
+        if (!costHeads.length || !revenueData) throw new Error("Missing financial data");
 
-        const { data: revenueData } = await supabase
-            .from('revenue_data')
-            .select('*')
-            .eq('case_id', caseId)
-            .single();
-
-        if (!costHeads || !revenueData) throw new Error("Missing financial data");
-
-        const licName = licenseeName || caseData.licensees.name;
+        const licName = licenseeName || caseData.licensees?.name || 'Local Licensee';
 
         // 2. Validate revenue data
         const computedRevenue = (revenueData.units_sold_mu * revenueData.avg_tariff_per_unit) / 10;
@@ -62,7 +49,7 @@ export async function POST(req: NextRequest) {
                 const ragQuery = `${licName} ${head.head_name} deviation ${Math.round(deltaPct)}%`;
                 const ragContext = await retrieveContext(ragQuery, 3);
 
-                // Call LLM for prudence reasoning
+                // Call LLM for prudence reasoning with robust fallback
                 const prudencePrompt = buildPrudencePrompt(
                     licName,
                     head.head_name,
@@ -71,23 +58,33 @@ export async function POST(req: NextRequest) {
                     deltaPct,
                     ragContext
                 );
-
-                const rawResponse = await callLLM(KSERC_SYSTEM_PROMPT, prudencePrompt, 800);
-
+                let rawResponse: string;
                 try {
-                    const parsedStr = rawResponse.replace(/```json|```/g, '').trim();
-                    const parsed = JSON.parse(parsedStr);
-                    aiVerdict = parsed.verdict.toLowerCase().replace(' ', '_');
-                    aiAllowedCr = parsed.allowed_cr;
-                    aiReason = parsed.reasoning;
-                    aiOrderRef = parsed.order_reference;
-                } catch (llmErr: unknown) {
-                    console.error("LLM JSON Fallback", llmErr);
-                    // Fallback to formula-based prudence if LLM JSON parse fails
+                    rawResponse = await callLLM(KSERC_SYSTEM_PROMPT, prudencePrompt, 800);
+                } catch (llmCallErr: unknown) {
+                    console.warn('LLM call failed, falling back to formula:', llmCallErr);
                     const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
                     aiVerdict = formulaResult.verdict;
                     aiAllowedCr = formulaResult.allowed;
-                    aiReason = `Formula-based normative cap applied for ${head.head_name}.`;
+                    aiReason = `Formula fallback due to LLM error for ${head.head_name}.`;
+                    // skip JSON parsing block
+                    rawResponse = '';
+                }
+                if (rawResponse) {
+                    try {
+                        const parsedStr = rawResponse.replace(/```json|```/g, '').trim();
+                        const parsed = JSON.parse(parsedStr);
+                        aiVerdict = parsed.verdict.toLowerCase().replace(' ', '_');
+                        aiAllowedCr = parsed.allowed_cr;
+                        aiReason = parsed.reasoning;
+                        aiOrderRef = parsed.order_reference;
+                    } catch (llmErr: unknown) {
+                        console.error('LLM JSON parse failed, using formula fallback', llmErr);
+                        const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
+                        aiVerdict = formulaResult.verdict;
+                        aiAllowedCr = formulaResult.allowed;
+                        aiReason = `Formula fallback after JSON parse error for ${head.head_name}.`;
+                    }
                 }
             } else {
                 // Safe to approve or run formula
@@ -97,7 +94,7 @@ export async function POST(req: NextRequest) {
             }
 
             // Update cost head in database
-            await supabase.from('cost_heads').update({
+            db.updateCostHead(head.id, {
                 deviation_pct: deltaPct,
                 flag_level: flagLevel || null,
                 ai_verdict: aiVerdict,
@@ -106,7 +103,7 @@ export async function POST(req: NextRequest) {
                 ai_order_reference: aiOrderRef,
                 final_verdict: aiVerdict,
                 final_allowed_cr: aiAllowedCr,
-            }).eq('id', head.id);
+            });
 
             results.push({ ...head, deltaPct, flagLevel, aiVerdict, aiAllowedCr, aiReason });
         }
@@ -116,13 +113,13 @@ export async function POST(req: NextRequest) {
         const revenueGap = computeRevenueGap(arrActual, Number(revenueData.reported_revenue_cr));
 
         // 5. Update case with computed totals
-        await supabase.from('truing_cases').update({
+        db.updateCase(caseId, {
             actual_arr_cr: arrActual,
             revenue_actual_cr: revenueData.reported_revenue_cr,
             revenue_gap_cr: revenueGap,
             status: 'analysis_done',
             updated_at: new Date().toISOString(),
-        }).eq('id', caseId);
+        });
 
         return NextResponse.json({
             success: true,

@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Aadhunik';
+  src: url('/fonts/Aadhunik.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aadhunik';
+  src: url('/fonts/Aadhunik-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --navy: #1A3557;
@@ -65,7 +81,7 @@
 }
 
 body {
-  font-family: 'Noto Sans', sans-serif;
+  font-family: 'Aadhunik', var(--font-noto-sans), sans-serif;
   background: var(--page);
   color: var(--tx);
   font-size: 15px;

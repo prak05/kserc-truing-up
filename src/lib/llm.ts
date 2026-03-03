@@ -38,18 +38,8 @@ export async function callLLM(
         });
         return response.choices[0].message.content || '';
     } catch (groqError) {
-        console.warn('Groq failed, falling back to OpenRouter:', groqError);
-        // Fallback to OpenRouter
-        const response = await openrouterClient.chat.completions.create({
-            model: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-r1:free',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            max_tokens: maxTokens,
-            temperature: 0.1,
-        });
-        return response.choices[0].message.content || '';
+        console.error('Groq LLM Failed:', groqError);
+        throw new Error('Primary LLM (Groq) failed and OpenRouter fallback is disabled.');
     }
 }
 
