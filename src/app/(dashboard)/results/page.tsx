@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, Send, CheckCircle2, AlertTriangle, XCircle, Info, FileText } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle2, AlertTriangle, XCircle, Info, FileText, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface CostHead {
@@ -39,6 +40,23 @@ function ResultsContent() {
     const [revenue, setRevenue] = useState<any>(null);
     const [selectedItem, setSelectedItem] = useState<CostHead | null>(null);
 
+    // Chat State
+    const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([
+        { role: 'assistant', content: 'Analysis complete. I am ready to answer any questions regarding the regulatory formulas applied or specific deductions. How can I help?' }
+    ]);
+    const [chatInput, setChatInput] = useState("");
+    const [chatLoading, setChatLoading] = useState(false);
+
+    // Save Analysis State
+    const [isSavingCase, setIsSavingCase] = useState(false);
+
+    // Modify Expense State
+    const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+    const [modifyValue, setModifyValue] = useState("");
+    const [modifyNote, setModifyNote] = useState("");
+    const [modifyVerdict, setModifyVerdict] = useState("");
+    const [isModifying, setIsModifying] = useState(false);
+
     useEffect(() => {
         if (caseId) {
             fetchReportData();
@@ -59,6 +77,94 @@ function ResultsContent() {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (!chatInput.trim() || chatLoading) return;
+        const newMessages = [...chatMessages, { role: 'user', content: chatInput }];
+        setChatMessages(newMessages);
+        setChatInput("");
+        setChatLoading(true);
+
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ caseId, messages: newMessages })
+            });
+            const data = await res.json();
+            if (data.reply) {
+                setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+            }
+        } catch (e) {
+            console.error("Chat error", e);
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
+    const handleUpdateStatus = async (newStatus: string) => {
+        setIsSavingCase(true);
+        try {
+            const res = await fetch("/api/save-analysis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ caseId, status: newStatus })
+            });
+            if (res.ok) {
+                setCaseData((prev: any) => prev ? { ...prev, status: newStatus } : null);
+            }
+        } catch (e) {
+            console.error("Update status error", e);
+        } finally {
+            setIsSavingCase(false);
+        }
+    };
+
+    const handleModifyValue = async () => {
+        if (!selectedItem || !modifyValue || !modifyNote) return;
+        setIsModifying(true);
+        try {
+            const res = await fetch("/api/update-cost-head", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    costHeadId: selectedItem.id,
+                    newValue: parseFloat(modifyValue),
+                    note: modifyNote,
+                    newVerdict: modifyVerdict
+                })
+            });
+            if (res.ok) {
+                // Update local state without full refetch
+                const updatedHeads = costHeads.map(h => {
+                    if (h.id === selectedItem.id) {
+                        return {
+                            ...h,
+                            final_allowed_cr: parseFloat(modifyValue),
+                            final_verdict: modifyVerdict,
+                            ai_reason: `[ADMIN OVERRIDE] ${modifyNote}\n\nOriginal AI Reason: ${h.ai_reason}`
+                        };
+                    }
+                    return h;
+                });
+                setCostHeads(updatedHeads);
+                setSelectedItem({
+                    ...selectedItem,
+                    final_allowed_cr: parseFloat(modifyValue),
+                    final_verdict: modifyVerdict,
+                    ai_reason: `[ADMIN OVERRIDE] ${modifyNote}\n\nOriginal AI Reason: ${selectedItem.ai_reason}`
+                });
+                setIsModifyModalOpen(false);
+                setModifyValue("");
+                setModifyNote("");
+                setModifyVerdict("");
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsModifying(false);
         }
     };
 
@@ -130,11 +236,33 @@ function ResultsContent() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2.5">
-                    <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 shadow-sm border-amber-200 px-3 py-1 uppercase tracking-wider text-[10px]">
-                        Pending Review
-                    </Badge>
+                    <Select
+                        value={caseData.status}
+                        onValueChange={handleUpdateStatus}
+                        disabled={isSavingCase}
+                    >
+                        <SelectTrigger className={`h-8 min-w-[140px] text-[10px] uppercase font-bold tracking-wider ${caseData.status === 'SAVED'
+                            ? 'border-green-200 bg-green-50 text-green-800'
+                            : 'border-amber-200 bg-amber-50 text-amber-800'
+                            }`}>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="PARTIAL" className="text-[11px] uppercase tracking-wide">Partial Stage</SelectItem>
+                            <SelectItem value="analysis_done" className="text-[11px] uppercase tracking-wide">AI Drafted</SelectItem>
+                            <SelectItem value="SAVED" className="text-[11px] uppercase tracking-wide font-bold text-green-700">Approved</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <Button variant="outline" onClick={() => router.push("/")} className="text-blue border-blue/20 hover:bg-blue-50 shadow-sm">
                         <ArrowLeft className="mr-2 h-4 w-4" /> Start Over
+                    </Button>
+                    <Button
+                        onClick={() => handleUpdateStatus('SAVED')}
+                        disabled={isSavingCase || caseData.status === 'SAVED'}
+                        className="bg-green-600 hover:bg-green-700 shadow-md shadow-green-200"
+                    >
+                        <Save className="mr-2 h-4 w-4" />
+                        {isSavingCase ? "Saving..." : "Save Analysis"}
                     </Button>
                     <Button onClick={() => router.push(`/report?caseId=${caseId}`)} className="bg-navy hover:bg-navy-dark shadow-md shadow-navy/20">
                         <FileText className="mr-2 h-4 w-4" /> Generate Order Draft
@@ -215,8 +343,8 @@ function ResultsContent() {
                                     <TableRow className="hover:bg-navy">
                                         <TableHead className="text-white h-11 px-6">Line Item</TableHead>
                                         <TableHead className="text-right text-white h-11">Claimed (₹ Cr)</TableHead>
-                                        <TableHead className="text-right text-white h-11">Approved Base</TableHead>
-                                        <TableHead className="text-right text-white h-11 font-bold">AI Allowed</TableHead>
+                                        <TableHead className="text-right text-white h-11">Approved Base (₹ Cr)</TableHead>
+                                        <TableHead className="text-right text-white h-11 font-bold">AI Allowed (₹ Cr)</TableHead>
                                         <TableHead className="text-center text-white h-11 px-6">Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -236,15 +364,23 @@ function ResultsContent() {
                                                 onClick={() => setSelectedItem(item)}
                                             >
                                                 <TableCell className="py-3.5 px-6 font-medium text-navy">{item.head_name}</TableCell>
-                                                <TableCell className="py-3.5 text-right font-mono text-slate-600">{Number(item.actual_cr).toFixed(2)}</TableCell>
-                                                <TableCell className="py-3.5 text-right font-mono text-muted-foreground">{Number(item.approved_cr).toFixed(2)}</TableCell>
-                                                <TableCell className={`py-3.5 text-right font-mono font-bold ${isFlagged ? 'text-red-600' : 'text-green-600'}`}>
-                                                    {Number(item.final_allowed_cr).toFixed(2)}
+                                                <TableCell className="py-3.5 text-right font-mono text-slate-600">₹ {Number(item.actual_cr).toFixed(2)}</TableCell>
+                                                <TableCell className="py-3.5 text-right font-mono text-muted-foreground">₹ {Number(item.approved_cr).toFixed(2)}</TableCell>
+                                                <TableCell className={`py-3.5 text-right font-mono font-bold ${['approved', 'partial_approval'].includes(item.final_verdict?.toLowerCase()) ? 'text-green-600' : 'text-red-600'}`}>
+                                                    ₹ {Number(item.final_allowed_cr).toFixed(2)}
                                                 </TableCell>
                                                 <TableCell className="py-3.5 px-6 text-center">
-                                                    {isFlagged ? (
+                                                    {item.final_verdict?.toLowerCase() === 'capped' ? (
                                                         <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-red-50 text-red-700 border-red-200">
                                                             <AlertTriangle className="mr-1 h-3 w-3" /> Capped
+                                                        </Badge>
+                                                    ) : item.final_verdict?.toLowerCase() === 'rejected' ? (
+                                                        <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-red-100 text-red-900 border-red-300">
+                                                            <XCircle className="mr-1 h-3 w-3" /> Rejected
+                                                        </Badge>
+                                                    ) : item.final_verdict?.toLowerCase() === 'partial_approval' ? (
+                                                        <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-amber-50 text-amber-700 border-amber-200">
+                                                            <Info className="mr-1 h-3 w-3" /> Partial
                                                         </Badge>
                                                     ) : (
                                                         <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-green-50 text-green-700 border-green-200 pt-0.5">
@@ -338,7 +474,19 @@ function ResultsContent() {
                                         </div>
                                     </CardContent>
                                     <div className="bg-slate-50 border-t p-3 flex justify-end gap-2">
-                                        <Button variant="outline" size="sm" className="text-xs h-8">Modify Value manually</Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setModifyValue(selectedItem.final_allowed_cr.toString());
+                                                setModifyVerdict(selectedItem.final_verdict.toLowerCase());
+                                                setModifyNote("");
+                                                setIsModifyModalOpen(true);
+                                            }}
+                                            className="text-xs h-8 hover:bg-slate-200"
+                                        >
+                                            Modify Value manually
+                                        </Button>
                                     </div>
                                 </Card>
                             </motion.div>
@@ -396,23 +544,106 @@ function ResultsContent() {
                         </CardHeader>
                         <CardContent className="p-0 flex flex-col bg-slate-50">
                             <div className="h-[200px] overflow-y-auto p-4 space-y-3">
-                                <div className="max-w-[90%] self-start rounded-b-xl rounded-tr-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm">
-                                    <div className="mb-1 text-[9px] font-bold uppercase tracking-[1px] text-blue">KSERC-Analyst System</div>
-                                    Analysis complete for <b>{caseData.licensees.short_name}</b>. I am ready to answer any questions regarding the regulatory formulas applied or specific deductions. How can I help?
-                                </div>
+                                {chatMessages.map((msg, i) => (
+                                    <div key={i} className={`max-w-[90%] text-[13px] leading-relaxed shadow-sm px-3.5 py-2.5 border ${msg.role === 'assistant'
+                                        ? 'self-start rounded-b-xl rounded-tr-xl border-slate-200 bg-white'
+                                        : 'self-end rounded-b-xl rounded-tl-xl border-blue/30 bg-blue/5 ml-auto'
+                                        }`}>
+                                        {msg.role === 'assistant' && <div className="mb-1 text-[9px] font-bold uppercase tracking-[1px] text-blue">KSERC-Analyst System</div>}
+                                        {msg.role === 'user' && <div className="mb-1 text-[9px] font-bold uppercase tracking-[1px] text-navy">You</div>}
+                                        {msg.content}
+                                    </div>
+                                ))}
+                                {chatLoading && (
+                                    <div className="text-xs text-muted-foreground animate-pulse italic ml-2">Analyst is typing...</div>
+                                )}
                             </div>
                             <div className="flex border-t bg-white p-2 gap-2">
                                 <input
                                     type="text"
                                     placeholder="e.g. Why was Employee Cost capped?"
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                                     className="flex-1 rounded-md border-slate-200 bg-slate-50 px-3 py-2 text-[13px] outline-none transition-colors focus:border-blue focus:bg-white focus:ring-1 focus:ring-blue"
                                 />
-                                <Button size="sm" className="bg-navy hover:bg-navy-dark px-3 rounded-md shadow-sm"><Send size={14} /></Button>
+                                <Button size="sm" onClick={handleSendMessage} disabled={chatLoading} className="bg-navy hover:bg-navy-dark px-3 rounded-md shadow-sm">
+                                    <Send size={14} />
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
                 </motion.div>
             </div>
+
+            {/* Modify Modal */}
+            {isModifyModalOpen && selectedItem && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-[400px] bg-white rounded-xl shadow-2xl border overflow-hidden">
+                        <div className="bg-navy px-4 py-3 text-white font-semibold flex justify-between items-center">
+                            <span>Modify Expense Value</span>
+                            <button onClick={() => setIsModifyModalOpen(false)} className="text-white/70 hover:text-white"><XCircle size={18} /></button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest block mb-1.5">Cost Head</label>
+                                <div className="font-medium text-navy bg-slate-50 p-2 rounded-md border">{selectedItem.head_name}</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest block mb-1.5">Claimed (₹ Cr)</label>
+                                    <div className="font-mono bg-slate-50 p-2 rounded-md border text-slate-500">{selectedItem.actual_cr.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-navy uppercase tracking-widest block mb-1.5">New Target Allowed (₹ Cr)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={modifyValue}
+                                        onChange={e => setModifyValue(e.target.value)}
+                                        className="w-full font-mono bg-white p-2 rounded-md border border-blue focus:ring-1 focus:ring-blue outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-bold text-navy uppercase tracking-widest block mb-1.5">Current Verdict</label>
+                                    <div className="bg-slate-50 p-2 rounded-md border text-slate-500 text-sm capitalize">{selectedItem.final_verdict}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-navy uppercase tracking-widest block mb-1.5">New Verdict</label>
+                                    <Select value={modifyVerdict} onValueChange={setModifyVerdict}>
+                                        <SelectTrigger className="h-10 bg-white border-blue/40 ring-offset-background focus:ring-1 focus:ring-blue">
+                                            <SelectValue placeholder="Override verdict" />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[300] bg-white border shadow-xl">
+                                            <SelectItem value="approved">Approved</SelectItem>
+                                            <SelectItem value="capped">Capped</SelectItem>
+                                            <SelectItem value="rejected">Rejected</SelectItem>
+                                            <SelectItem value="partial_approval">Partial Approval</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-navy uppercase tracking-widest block mb-1.5">Reviewer Note (Required)</label>
+                                <textarea
+                                    value={modifyNote}
+                                    onChange={e => setModifyNote(e.target.value)}
+                                    placeholder="Explain why this value is being overridden..."
+                                    className="w-full h-24 text-sm bg-white p-2 rounded-md border focus:border-blue focus:ring-1 focus:ring-blue outline-none resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-slate-50 border-t p-4 flex justify-end gap-2">
+                            <Button variant="ghost" onClick={() => setIsModifyModalOpen(false)}>Cancel</Button>
+                            <Button className="bg-navy hover:bg-navy-dark" disabled={isModifying || !modifyValue || !modifyNote} onClick={handleModifyValue}>
+                                {isModifying ? "Saving..." : "Save Changes"}
+                            </Button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </motion.div>
     );
 }

@@ -12,14 +12,14 @@ export async function POST(req: NextRequest) {
     try {
         const { caseId, aicpi, licenseeName } = await req.json();
 
-        // 1. Load case data from local Db
+        // 1. Load case data from Local DB
         const caseData = db.getCase(caseId);
         if (!caseData) throw new Error("Case not found");
 
         const costHeads = db.getCostHeads(caseId);
         const revenueData = db.getRevenueData(caseId);
 
-        if (!costHeads.length || !revenueData) throw new Error("Missing financial data");
+        if (!costHeads?.length || !revenueData) throw new Error("Missing financial data");
 
         const licName = licenseeName || caseData.licensees?.name || 'Local Licensee';
 
@@ -45,11 +45,12 @@ export async function POST(req: NextRequest) {
             let aiOrderRef = '';
 
             if (flagLevel === 'critical' || flagLevel === 'moderate') {
-                // Build RAG query to find similar past cases
                 const ragQuery = `${licName} ${head.head_name} deviation ${Math.round(deltaPct)}%`;
-                const ragContext = await retrieveContext(ragQuery, 3);
+                let ragContext = "";
+                try {
+                    ragContext = await retrieveContext(ragQuery, 3);
+                } catch (e) { }
 
-                // Call LLM for prudence reasoning with robust fallback
                 const prudencePrompt = buildPrudencePrompt(
                     licName,
                     head.head_name,
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
                     deltaPct,
                     ragContext
                 );
-                let rawResponse: string;
+                let rawResponse: string = '';
                 try {
                     rawResponse = await callLLM(KSERC_SYSTEM_PROMPT, prudencePrompt, 800);
                 } catch (llmCallErr: unknown) {
@@ -67,7 +68,6 @@ export async function POST(req: NextRequest) {
                     aiVerdict = formulaResult.verdict;
                     aiAllowedCr = formulaResult.allowed;
                     aiReason = `Formula fallback due to LLM error for ${head.head_name}.`;
-                    // skip JSON parsing block
                     rawResponse = '';
                 }
                 if (rawResponse) {
@@ -87,14 +87,12 @@ export async function POST(req: NextRequest) {
                     }
                 }
             } else {
-                // Safe to approve or run formula
                 const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
                 aiVerdict = formulaResult.verdict;
                 aiAllowedCr = formulaResult.allowed;
             }
 
-            // Update cost head in database
-            db.updateCostHead(head.id, {
+            const updateData = {
                 deviation_pct: deltaPct,
                 flag_level: flagLevel || null,
                 ai_verdict: aiVerdict,
@@ -103,7 +101,8 @@ export async function POST(req: NextRequest) {
                 ai_order_reference: aiOrderRef,
                 final_verdict: aiVerdict,
                 final_allowed_cr: aiAllowedCr,
-            });
+            };
+            db.updateCostHead(head.id, updateData);
 
             results.push({ ...head, deltaPct, flagLevel, aiVerdict, aiAllowedCr, aiReason });
         }

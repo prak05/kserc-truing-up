@@ -43,6 +43,29 @@ export async function callLLM(
     }
 }
 
+export async function callLLMChat(
+    messages: { role: 'system' | 'user' | 'assistant', content: string }[],
+    maxTokens = 1500
+): Promise<string> {
+    const groqClient = new OpenAI({
+        baseURL: process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1',
+        apiKey: process.env.GROQ_API_KEY,
+    });
+
+    try {
+        const response = await groqClient.chat.completions.create({
+            model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+            messages: messages,
+            max_tokens: maxTokens,
+            temperature: 0.3,
+        });
+        return response.choices[0].message.content || '';
+    } catch (groqError) {
+        console.error('Groq LLM Chat Failed:', groqError);
+        throw new Error('LLM Chat failed.');
+    }
+}
+
 // ─── KSERC-specific prompt templates ─────────────────────────────
 
 export const KSERC_SYSTEM_PROMPT = `You are a senior regulatory analyst at the Kerala State Electricity Regulatory 

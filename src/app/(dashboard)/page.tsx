@@ -29,21 +29,46 @@ export default function DashboardClient() {
     const [statusText, setStatusText] = useState("");
     const [log, setLog] = useState<string[]>([]);
 
-    // Recent cases mock (in a real app, fetch from /api/cases)
     const [recentCases, setRecentCases] = useState<any[]>([]);
+    const [loadingCases, setLoadingCases] = useState(true);
 
     useEffect(() => {
-        // Fetch recent cases from local JSON DB
-        fetch('/api/get-results?caseId=all') // We might need a generic endpoint or just mock for now
-            .catch(e => console.error(e));
-
-        // Mock recent cases for dashboard visual representation based on wireframes
-        setRecentCases([
-            { id: 1, licensee: 'Infoparks Kerala', fy: '2024-25', status: 'Analysis Complete', state: 'gap', gap: '64.72 Lakh' },
-            { id: 2, licensee: 'CSEZA', fy: '2023-24', status: 'Pending Review', state: 'surplus', gap: 'Pending' },
-            { id: 3, licensee: 'KDHPCL', fy: '2022-23', status: 'Report Generated', state: 'surplus', gap: '116.91 Lakh' },
-        ]);
+        fetchCases();
     }, []);
+
+    const fetchCases = async () => {
+        setLoadingCases(true);
+        try {
+            const res = await fetch('/api/get-results?caseId=all');
+            const data = await res.json();
+            if (data.cases) {
+                setRecentCases(data.cases.map((c: any) => ({
+                    id: c.id,
+                    licensee: c.licensees?.name || 'Unknown',
+                    fy: c.financial_year,
+                    status: c.status,
+                    state: c.revenue_gap_cr > 0 ? 'gap' : 'surplus',
+                    gap: Math.abs(c.revenue_gap_cr || 0).toFixed(2)
+                })));
+            }
+        } catch (e) {
+            console.error("Error fetching cases", e);
+        } finally {
+            setLoadingCases(false);
+        }
+    };
+
+    const handleDeleteCase = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (confirm("Are you sure you want to delete this analysis?")) {
+            try {
+                const res = await fetch(`/api/delete-case?caseId=${id}`, { method: 'DELETE' });
+                if (res.ok) fetchCases();
+            } catch (err) {
+                console.error("Error deleting case", err);
+            }
+        }
+    };
 
     const uploadCount = files.filter(Boolean).length;
     const canRun = files[0] && files[1] && licensee;
@@ -169,26 +194,39 @@ export default function DashboardClient() {
                         </div>
 
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-3 gap-4">
-                            {recentCases.map((rc, i) => (
-                                <motion.div key={i} whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }} className="transition-all duration-300">
-                                    <Card className={`overflow-hidden border-t-4 ${rc.state === 'gap' ? 'border-t-red-500' : 'border-t-blue'} shadow-sm`}>
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-[15px] truncate">{rc.licensee}</CardTitle>
-                                            <CardDescription className="text-xs">FY {rc.fy}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                                                {rc.state === 'gap' ? 'Gap' : 'Surplus'}
-                                            </div>
-                                            <div className={`text-2xl font-mono font-bold ${rc.state === 'gap' ? 'text-red-600' : 'text-navy'}`}>
-                                                {rc.gap !== 'Pending' ? `₹${rc.gap}` : 'Pending'}
-                                            </div>
-                                            <Badge variant="outline" className="mt-3 bg-slate-50">{rc.status}</Badge>
-                                        </CardContent>
-                                    </Card>
-                                </motion.div>
-                            ))}
+                        <div className="grid md:grid-cols-3 grid-cols-1 gap-4">
+                            {loadingCases ? (
+                                <div className="col-span-3 py-12 text-center text-muted-foreground animate-pulse text-sm">
+                                    Loading saved analyses from Local DB...
+                                </div>
+                            ) : recentCases.length === 0 ? (
+                                <div className="col-span-3 py-12 text-center text-muted-foreground bg-slate-50 border border-dashed rounded-xl">
+                                    No saved analyses found. Start a new one below!
+                                </div>
+                            ) : (
+                                recentCases.map((rc, i) => (
+                                    <motion.div key={i} whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }} className="transition-all duration-300">
+                                        <Card className={`overflow-hidden border-t-4 ${rc.state === 'gap' ? 'border-t-red-500' : 'border-t-blue'} shadow-sm`}>
+                                            <CardHeader className="pb-2">
+                                                <CardTitle className="text-[15px] truncate">{rc.licensee}</CardTitle>
+                                                <CardDescription className="text-xs">FY {rc.fy}</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                                                    {rc.state === 'gap' ? 'Gap' : 'Surplus'}
+                                                </div>
+                                                <div className={`text-2xl font-mono font-bold ${rc.state === 'gap' ? 'text-red-600' : 'text-navy'}`}>
+                                                    {rc.gap !== 'Pending' ? `₹${rc.gap} Cr` : 'Pending'}
+                                                </div>
+                                                <div className="flex justify-between items-center mt-3">
+                                                    <Badge variant="outline" className="bg-slate-50">{rc.status}</Badge>
+                                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 h-auto" onClick={(e) => handleDeleteCase(rc.id, e)}>Delete</Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </motion.div>
+                                ))
+                            )}
                         </div>
 
                         {/* Recent Activity List */}
@@ -198,8 +236,8 @@ export default function DashboardClient() {
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="divide-y text-sm">
-                                    {recentCases.map((rc, i) => (
-                                        <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50/80 transition-colors">
+                                    {recentCases.slice(0, 5).map((rc, i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50/80 transition-colors cursor-pointer" onClick={() => router.push(`/results?caseId=${rc.id}`)}>
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-2 h-2 rounded-full ${rc.state === 'gap' ? 'bg-red-500' : 'bg-blue'}`}></div>
                                                 <span className="font-medium text-navy">{rc.licensee}</span>
@@ -208,6 +246,9 @@ export default function DashboardClient() {
                                             <Button variant="ghost" size="sm" className="h-8 text-blue"><ChevronRight size={16} /></Button>
                                         </div>
                                     ))}
+                                    {!loadingCases && recentCases.length === 0 && (
+                                        <div className="p-4 text-muted-foreground text-center">No recent activity.</div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

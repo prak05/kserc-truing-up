@@ -6,12 +6,16 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { fy, activeLicensee, extractData } = body;
 
+        if (!fy || !activeLicensee) {
+            throw new Error('Missing required fields: fy and activeLicensee');
+        }
+
         // 1. Fetch Licensee
-        const licRecord = db.getLicenseeByShortName(activeLicensee);
+        const licensee = db.getLicenseeByShortName(activeLicensee);
 
         // 2. Create Case
         const caseObj = db.insertCase({
-            licensee_id: licRecord?.id || 'lic-1',
+            licensee_id: licensee.id,
             financial_year: fy,
             status: 'draft'
         });
@@ -20,7 +24,7 @@ export async function POST(req: NextRequest) {
         if (extractData?.data?.costHeads) {
             const heads = extractData.data.costHeads.map((ch: any) => ({
                 case_id: caseObj.id,
-                head_name: ch.name,
+                head_name: ch.name || ch.head_name,
                 category: ch.category,
                 approved_cr: ch.approved_cr,
                 actual_cr: ch.actual_cr

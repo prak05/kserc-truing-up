@@ -95,6 +95,11 @@ export const db = {
         return data.cost_heads.filter(ch => ch.case_id === caseId);
     },
 
+    getCostHead: (id: string) => {
+        const data = readDb();
+        return data.cost_heads.find(ch => ch.id === id) || null;
+    },
+
     insertRevenueData: (revData: any) => {
         const data = readDb();
         const newRev = {
@@ -109,5 +114,14 @@ export const db = {
     getRevenueData: (caseId: string) => {
         const data = readDb();
         return data.revenue_data.find(r => r.case_id === caseId) || null;
+    },
+
+    deleteCase: (caseId: string) => {
+        const data = readDb();
+        data.truing_cases = data.truing_cases.filter(c => c.id !== caseId);
+        data.cost_heads = data.cost_heads.filter(ch => ch.case_id !== caseId);
+        data.revenue_data = data.revenue_data.filter(r => r.case_id !== caseId);
+        writeDb(data);
+        return true;
     }
 };
