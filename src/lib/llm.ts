@@ -68,16 +68,22 @@ export async function callLLMChat(
 
 // ─── KSERC-specific prompt templates ─────────────────────────────
 
-export const KSERC_SYSTEM_PROMPT = `You are a senior regulatory analyst at the Kerala State Electricity Regulatory 
-Commission (KSERC). You are conducting the Truing-Up of accounts for small distribution licensees. 
-You apply the following principles:
-1. KSERC Tariff Regulations 2014 and 2020 govern allowable costs.
-2. Prudence checks ensure only genuinely incurred and justifiable costs are allowed.
-3. Normative escalation caps apply to controllable costs (O&M, Admin expenses).
-4. Uncontrollable costs (power purchase, transmission) are allowed at actuals with proof.
-5. You always cite specific order numbers and dates when referencing precedents.
-6. Your verdicts are one of: APPROVED, PARTIAL APPROVAL, DISALLOWED.
-7. For partial approval, you state the allowed amount and the disallowed amount with reason.`;
+export const KSERC_SYSTEM_PROMPT = `Role: You are a senior regulatory analyst at the Kerala State Electricity Regulatory Commission (KSERC). You are conducting the Truing-Up of accounts for small distribution licensees.
+
+Objective: Perform prudence checks on claimed expenses, ensuring strict adherence to KSERC mathematical limits and regulatory principles. Produce outputs in the exact formal style of official KSERC orders.
+
+Details & Strict Stylistic Rules:
+1. Voice and Tone: Strictly formal, legalistic, and authoritative. NEVER use casual language like "we think" or "looks okay."
+2. Phrasing: You must frame justifications within the formal structure of KSERC Tariff Regulations. 
+3. Citations: Every allowance or disallowance must cite a specific regulation (e.g., KSERC Tariff Regulations 2014, 2021, or 2024 Second Amendment) or the Electricity Act 2003. 
+   - Example format: "Disallowed ₹X.XX Cr. as per Regulation [Y] of KSERC (Terms and Conditions for Determination of Tariff) Regulations, 2021, restricting excess O&M expenses beyond normative limits."
+4. KSERC Tariff Regulations 2014 and 2020 govern allowable costs.
+5. Prudence checks ensure only genuinely incurred and justifiable costs are allowed.
+6. Normative escalation caps apply to controllable costs (O&M, Admin expenses).
+7. Uncontrollable costs (power purchase, transmission) are allowed at actuals with proof.
+8. Your verdicts are one of: APPROVED, PARTIAL APPROVAL, DISALLOWED.
+
+Sense Check: Validate that your final allowed amounts EXACTLY match any mathematical limits provided in the prompt. Do not deviate from strict deterministic calculations. Validate that your reasoning utilizes strictly legalistic phrasing.`;
 
 export function buildPrudencePrompt(
     licensee: string,
@@ -85,26 +91,35 @@ export function buildPrudencePrompt(
     approved: number,
     actual: number,
     deltaPct: number,
-    ragContext: string
+    ragContext: string,
+    mathDetails?: string,
+    deterministicAllowed?: number | null
 ): string {
+    let mathInstruction = "";
+    if (mathDetails && deterministicAllowed !== null && deterministicAllowed !== undefined) {
+        mathInstruction = `\nCRITICAL MATHEMATICAL LIMIT:\nThe strictly calculated allowable amount according to KSERC mathematical formulas is ₹${deterministicAllowed.toFixed(2)} Cr.\nCalculation details: ${mathDetails}\n\nYOU MUST SET THE ALLOWED AMOUNT TO EXACTLY ₹${deterministicAllowed.toFixed(2)} Cr. Focus your reasoning strictly on justifying this mathematical limit using KSERC formal language and citing past orders.\n`;
+    }
+
     return `Licensee: ${licensee}
 Cost Head: ${costHead}
 KSERC Approved Amount: ₹${approved.toFixed(2)} Cr
 Actual Amount Claimed: ₹${actual.toFixed(2)} Cr
-Deviation: ${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(1)}% (${deltaPct > 0 ? 'overrun' : 'under-run'})
+Deviation: ${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(1)}% (${deltaPct > 0 ? 'overrun' : 'under-run'})${mathInstruction}
 
 Relevant precedents from past KSERC orders:
 ${ragContext}
 
-Based on the above, provide:
-1. VERDICT: [APPROVED / PARTIAL APPROVAL / DISALLOWED]
-2. ALLOWED AMOUNT: ₹X.XX Cr
-3. DISALLOWED AMOUNT: ₹X.XX Cr (if any)
-4. REASONING: 2-3 sentences citing the applicable regulation or past order.
-5. ORDER REFERENCE: Quote the specific past order number you are relying on.
+Approach this step-by-step:
+1. Analyze the deviation against KSERC principles and math limits.
+2. Formulate the allowed vs disallowed split.
+3. Determine the final verdict.
 
 Format your response exactly as the following JSON object:
 {
+  "step_by_step_reasoning": [
+    "Step 1 thought...",
+    "Step 2 thought..."
+  ],
   "verdict": "APPROVED|PARTIAL APPROVAL|DISALLOWED",
   "allowed_cr": 0.00,
   "disallowed_cr": 0.00,

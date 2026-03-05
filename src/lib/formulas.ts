@@ -152,3 +152,255 @@ export function classifyDeviation(
     if (absPct > 5) return 'info';
     return null;
 }
+
+// ─── 11. Deterministic Mathematical Formulas (from ADWAITH proj) ───
+
+export function calculateDistributionLossPenalty(
+    actualLossPct: number,
+    targetLossPct: number,
+    totalUnitsPurchasedMu: number,
+    avgCostPerUnit: number
+) {
+    if (actualLossPct <= targetLossPct) {
+        return {
+            excessLossPct: 0.0,
+            excessUnitsMu: 0.0,
+            penaltyRsCr: 0.0,
+        };
+    }
+    const excessLossPct = actualLossPct - targetLossPct;
+    const excessUnitsMu = totalUnitsPurchasedMu * (excessLossPct / 100.0);
+    // 1 MU = 10 Lakh units = 0.1 Cr units. 
+    // cost is ₹/kWh (or Rs/Unit).
+    // Total cost in Cr = excessUnitsMu * 10^6 * avgCostPerUnit / 10^7 = excessUnitsMu * avgCostPerUnit / 10
+    const penaltyRsCr = (excessUnitsMu * avgCostPerUnit) / 10.0;
+
+    return {
+        excessLossPct,
+        excessUnitsMu,
+        penaltyRsCr: Number(penaltyRsCr.toFixed(4)),
+    };
+}
+
+export function calculateOMEscalation(
+    baseYearCostCr: number,
+    cpiCurrent: number,
+    cpiPrevious: number,
+    wpiCurrent: number,
+    wpiPrevious: number
+) {
+    if (cpiPrevious === 0 || wpiPrevious === 0) {
+        return { blendedEscalation: 0, normativeCapRsCr: baseYearCostCr };
+    }
+    const cpiEsc = (cpiCurrent - cpiPrevious) / cpiPrevious;
+    const wpiEsc = (wpiCurrent - wpiPrevious) / wpiPrevious;
+    const blended = 0.70 * cpiEsc + 0.30 * wpiEsc;
+    const normativeCap = baseYearCostCr * (1.0 + blended);
+
+    return {
+        cpiEscalation: Number(cpiEsc.toFixed(6)),
+        wpiEscalation: Number(wpiEsc.toFixed(6)),
+        blendedEscalation: Number(blended.toFixed(6)),
+        normativeCapRsCr: Number(normativeCap.toFixed(4)),
+    };
+}
+
+export function calculateRoNFA(
+    openingNfaCr: number,
+    consumerContributionsCr: number,
+    grantsCr: number,
+    normativeLoanAssetsCr: number,
+    rateOfReturn: number = 0.055
+) {
+    let eligibleBase = openingNfaCr - consumerContributionsCr - grantsCr - normativeLoanAssetsCr;
+    if (eligibleBase < 0) eligibleBase = 0.0;
+    const ronfa = eligibleBase * rateOfReturn;
+
+    return {
+        eligibleBaseRsCr: Number(eligibleBase.toFixed(4)),
+        ronfaRsCr: Number(ronfa.toFixed(4)),
+    };
+}
+
+export function imputeSurplusInterest(
+    accumulatedSurplusCr: number,
+    sbiDepositRate: number
+) {
+    if (accumulatedSurplusCr <= 0) return { imputedInterestRsCr: 0.0 };
+    const interest = accumulatedSurplusCr * sbiDepositRate;
+    return { imputedInterestRsCr: Number(interest.toFixed(4)) };
+}
+
+export function adjustDepreciation(
+    claimedDepreciationCr: number,
+    depreciationOnGrantFundedAssetsCr: number,
+    depreciationOnSurplusFundedAssetsCr: number
+) {
+    const disallowed = depreciationOnGrantFundedAssetsCr + depreciationOnSurplusFundedAssetsCr;
+    const approved = Math.max(claimedDepreciationCr - disallowed, 0.0);
+    return {
+        disallowedDepreciation: Number(disallowed.toFixed(4)),
+        approvedDepreciation: Number(approved.toFixed(4)),
+    };
+}
+
+export function calculateInterestOnNormativeLoan(
+    approvedCapexCr: number,
+    equityRatio: number = 0.30,
+    interestRate: number = 0.08
+) {
+    const loanPortion = 1.0 - equityRatio;
+    const normativeLoan = approvedCapexCr * loanPortion;
+    const interest = normativeLoan * interestRate;
+    return {
+        normativeLoanRsCr: Number(normativeLoan.toFixed(4)),
+        interestRsCr: Number(interest.toFixed(4)),
+    };
+}
+
+export function calculateDepreciation90PctCap(
+    originalCostCr: number,
+    accumulatedDepreciationCr: number,
+    currentYearDepreciationCr: number
+) {
+    if (originalCostCr <= 0) {
+        return {
+            claimedDepreciation: Number(currentYearDepreciationCr.toFixed(4)),
+            approvedDepreciationRsCr: 0.0,
+            disallowedDepreciationRsCr: Number(currentYearDepreciationCr.toFixed(4)),
+            capacityRemainingRsCr: 0.0
+        };
+    }
+    const maxDepreciation = originalCostCr * 0.90;
+    const availableDepreciation = maxDepreciation - accumulatedDepreciationCr;
+
+    let approved = 0.0;
+    if (availableDepreciation > 0) {
+        approved = Math.min(currentYearDepreciationCr, availableDepreciation);
+    }
+    let disallowed = currentYearDepreciationCr - approved;
+    if (disallowed < 0) disallowed = 0.0;
+
+    return {
+        claimedDepreciation: Number(currentYearDepreciationCr.toFixed(4)),
+        approvedDepreciationRsCr: Number(approved.toFixed(4)),
+        disallowedDepreciationRsCr: Number(disallowed.toFixed(4)),
+        capacityRemainingRsCr: Number(Math.max(0.0, availableDepreciation - approved).toFixed(4))
+    };
+}
+
+export function calculateWorkingCapitalInterest(
+    omExpensesAnnualCr: number,
+    receivablesAnnualCr: number,
+    securityDepositsHeldCr: number,
+    historicalGfaCr: number = 0.0,
+    fuelCostAnnualCr: number = 0.0,
+    interestRate: number = 0.09
+) {
+    const om1Month = omExpensesAnnualCr / 12.0;
+    const receivables2Months = (receivablesAnnualCr / 12.0) * 2.0;
+    const fuel1Month = fuelCostAnnualCr / 12.0;
+    const maintenanceSpares = historicalGfaCr * 0.01;
+
+    let totalWorkingCapital = om1Month + receivables2Months + fuel1Month + maintenanceSpares - securityDepositsHeldCr;
+    if (totalWorkingCapital < 0) totalWorkingCapital = 0.0;
+
+    const interest = totalWorkingCapital * interestRate;
+
+    return {
+        workingCapitalRsCr: Number(totalWorkingCapital.toFixed(4)),
+        interestOnWorkingCapitalRsCr: Number(interest.toFixed(4))
+    };
+}
+
+// ─── 12. Deterministic Decision Router ───
+export function computeDeterministicAllowedAmount(
+    headName: string,
+    claimedAmountCr: number,
+    approvedAmountCr: number,
+    caseData: any, // to access FY, licensee, etc.
+    revenueData: any // to access MU, load, etc.
+) {
+    const isOM = ['O&M Expenses', 'Employee Costs', 'Repair & Maintenance', 'Admin & General Expenses'].includes(headName);
+    const isPPC = headName === 'Power Purchase Cost';
+    const isDepreciation = headName === 'Depreciation';
+    const isRoNFA = headName === 'Return on NFA' || headName === 'Return on Equity';
+    const isIWC = headName === 'Interest on Working Capital';
+    const isLTInterest = headName === 'Interest on Loans' || headName === 'Interest on Long-Term Loans';
+
+    if (isOM) {
+        const cap = caseData?.inflation_pct ? (caseData.inflation_pct / 100) : 0.05;
+        const maxAllowed = approvedAmountCr * (1 + cap);
+        if (claimedAmountCr <= maxAllowed) {
+            return { allowed: claimedAmountCr, isDeterministic: true, mathDetails: `Under norm cap of ₹${maxAllowed.toFixed(2)} Cr` };
+        } else {
+            return { allowed: maxAllowed, isDeterministic: true, mathDetails: `Capped at norm ₹${maxAllowed.toFixed(2)} Cr` };
+        }
+    }
+
+    if (isPPC) {
+        const actualLoss = revenueData?.distribution_loss_pct || 0;
+        const targetLoss = caseData?.target_loss_pct || 5.0; // fallback target
+        const inputMu = revenueData?.energy_input_mu || 0;
+        const avgCost = caseData?.avg_cost_per_unit || 6.0;
+
+        if (actualLoss > targetLoss && inputMu > 0) {
+            const result = calculateDistributionLossPenalty(actualLoss, targetLoss, inputMu, avgCost);
+            const penalty = result.penaltyRsCr;
+            const finalAllowed = Math.max(claimedAmountCr - penalty, 0);
+            return {
+                allowed: finalAllowed,
+                isDeterministic: true,
+                mathDetails: `Distribution loss ${actualLoss.toFixed(2)}% > target ${targetLoss.toFixed(2)}%. Penalty: ₹${penalty.toFixed(2)} Cr.`
+            };
+        }
+        return { allowed: claimedAmountCr, isDeterministic: true, mathDetails: 'Actuals allowed (no loss penalty)' };
+    }
+
+    if (isDepreciation) {
+        const gfaCr = caseData?.gfa_cr || 0;
+        if (gfaCr > 0) {
+            const mathAllowed = gfaCr * 0.0528; // KSERC 5.28%
+            const allowed = Math.min(claimedAmountCr, mathAllowed);
+            return {
+                allowed,
+                isDeterministic: true,
+                mathDetails: `Reg 27: 5.28% of eligible GFA (₹${gfaCr} Cr) = ₹${mathAllowed.toFixed(2)} Cr. Allowed min(Claimed, Computed).`
+            };
+        }
+    }
+
+    if (isRoNFA) {
+        const nfaCr = caseData?.nfa_cr || 0;
+        if (nfaCr > 0) {
+            const rate = caseData?.ronfa_rate || 0.055;
+            const mathAllowed = nfaCr * rate;
+            const allowed = Math.min(claimedAmountCr, mathAllowed);
+            return {
+                allowed,
+                isDeterministic: true,
+                mathDetails: `Reg 28: ${(rate * 100).toFixed(1)}% of eligible NFA (₹${nfaCr} Cr) = ₹${mathAllowed.toFixed(2)} Cr.`
+            };
+        }
+    }
+
+    if (isIWC) {
+        const omAnn = caseData?.approved_om_cr || (approvedAmountCr * 0.5);
+        const revAnn = caseData?.revenue_actual_cr || (revenueData?.reported_revenue_cr || 0);
+        const sbiRate = 0.1115; // 11.15% (SBI EBLR 9.15% + 2%)
+
+        const result = calculateWorkingCapitalInterest(omAnn, revAnn, 0, 0, 0, sbiRate);
+        const mathAllowed = result.interestOnWorkingCapitalRsCr;
+        return {
+            allowed: mathAllowed > 0 ? mathAllowed : claimedAmountCr,
+            isDeterministic: true,
+            mathDetails: `Reg 29: WC logic -> O&M/12 + Receivables/6. Interest @ 11.15% = ₹${mathAllowed.toFixed(2)} Cr.`
+        };
+    }
+
+    if (headName === 'Section 3(1) Duty' || headName === 'Electricity Duty') {
+        return { allowed: 0, isDeterministic: true, mathDetails: 'Statutory rejection under Section 3(1) of Kerala Electricity Duty Act, 1963.' };
+    }
+
+    return { allowed: null, isDeterministic: false, mathDetails: '' };
+}

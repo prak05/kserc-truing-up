@@ -2,11 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
     computeDeviation, computeAllowedAmount, computeARR,
     computeRevenueGap, revenueCheckPasses, energyBalanceCheck,
-    classifyDeviation
+    classifyDeviation, computeDeterministicAllowedAmount
 } from '@/lib/formulas';
 import { callLLM, KSERC_SYSTEM_PROMPT, buildPrudencePrompt } from '@/lib/llm';
 import { retrieveContext } from '@/lib/rag';
 import { db } from '@/lib/db';
+import fs from 'fs';
+import path from 'path';
+
+// Pre-load custom knowledge base rules if available
+let customRulesText = '';
+try {
+    const rulesPath = path.join(process.cwd(), 'src/data/rules.json');
+    if (fs.existsSync(rulesPath)) {
+        const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
+        customRulesText = `\n\nCRITICAL KNOWLEDGE BASE GUIDELINES:\nNew Rules: ${rules.new_rules}\nTariff Data: ${rules.tariff_data}\nHistorical Precedents: ${rules.historical_data}\n`;
+    }
+} catch (e) {
+    console.error('Failed to load rules.json', e);
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -44,12 +58,27 @@ export async function POST(req: NextRequest) {
             let aiReason = 'Within normative limits — fully approved.';
             let aiOrderRef = '';
 
-            if (flagLevel === 'critical' || flagLevel === 'moderate') {
+            const deterministicResult = computeDeterministicAllowedAmount(
+                head.head_name,
+                Number(head.actual_cr),
+                Number(head.approved_cr),
+                caseData,
+                revenueData
+            );
+
+            const needsPrudenceCheck = flagLevel === 'critical' || flagLevel === 'moderate' || deterministicResult.isDeterministic;
+
+            if (needsPrudenceCheck) {
                 const ragQuery = `${licName} ${head.head_name} deviation ${Math.round(deltaPct)}%`;
                 let ragContext = "";
                 try {
                     ragContext = await retrieveContext(ragQuery, 3);
                 } catch (e) { }
+
+                // Inject the /rules knowledge base
+                if (customRulesText) {
+                    ragContext += customRulesText;
+                }
 
                 const prudencePrompt = buildPrudencePrompt(
                     licName,
@@ -57,39 +86,73 @@ export async function POST(req: NextRequest) {
                     Number(head.approved_cr),
                     Number(head.actual_cr),
                     deltaPct,
-                    ragContext
+                    ragContext,
+                    deterministicResult.mathDetails,
+                    deterministicResult.allowed
                 );
                 let rawResponse: string = '';
                 try {
                     rawResponse = await callLLM(KSERC_SYSTEM_PROMPT, prudencePrompt, 800);
                 } catch (llmCallErr: unknown) {
                     console.warn('LLM call failed, falling back to formula:', llmCallErr);
-                    const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
-                    aiVerdict = formulaResult.verdict;
-                    aiAllowedCr = formulaResult.allowed;
-                    aiReason = `Formula fallback due to LLM error for ${head.head_name}.`;
+                    if (deterministicResult.isDeterministic && deterministicResult.allowed !== null) {
+                        aiVerdict = deterministicResult.allowed < Number(head.actual_cr) ? 'partial' : 'approved';
+                        aiAllowedCr = deterministicResult.allowed;
+                        aiReason = `Mathematical formula fallback due to LLM error: ${deterministicResult.mathDetails}`;
+                    } else {
+                        const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
+                        aiVerdict = formulaResult.verdict;
+                        aiAllowedCr = formulaResult.allowed;
+                        aiReason = `Formula fallback due to LLM error for ${head.head_name}.`;
+                    }
                     rawResponse = '';
                 }
                 if (rawResponse) {
                     try {
                         const parsedStr = rawResponse.replace(/```json|```/g, '').trim();
                         const parsed = JSON.parse(parsedStr);
+
+                        const scratchpad = parsed.step_by_step_reasoning ? parsed.step_by_step_reasoning.join(" ") : "";
+                        console.log(`[${head.head_name} LLM Scratchpad]:`, scratchpad);
+
                         aiVerdict = parsed.verdict.toLowerCase().replace(' ', '_');
                         aiAllowedCr = parsed.allowed_cr;
+                        // Use original reasoning, but keep scratchpad in logs.
                         aiReason = parsed.reasoning;
                         aiOrderRef = parsed.order_reference;
+
+                        // Enforce math limits even if LLM hallucinated
+                        if (deterministicResult.isDeterministic && deterministicResult.allowed !== null) {
+                            if (Math.abs(aiAllowedCr - deterministicResult.allowed) > 0.02) {
+                                console.warn(`Mathematical override for ${head.head_name}: LLM chose ${aiAllowedCr}, overriding to ${deterministicResult.allowed}. LLM Scratchpad was: ${scratchpad}`);
+                                aiAllowedCr = deterministicResult.allowed;
+                                aiVerdict = aiAllowedCr < Number(head.actual_cr) ? 'partial' : 'approved';
+                            }
+                        }
                     } catch (llmErr: unknown) {
                         console.error('LLM JSON parse failed, using formula fallback', llmErr);
-                        const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
-                        aiVerdict = formulaResult.verdict;
-                        aiAllowedCr = formulaResult.allowed;
-                        aiReason = `Formula fallback after JSON parse error for ${head.head_name}.`;
+                        if (deterministicResult.isDeterministic && deterministicResult.allowed !== null) {
+                            aiVerdict = deterministicResult.allowed < Number(head.actual_cr) ? 'partial' : 'approved';
+                            aiAllowedCr = deterministicResult.allowed;
+                            aiReason = `Mathematical formula fallback after parse error: ${deterministicResult.mathDetails}`;
+                        } else {
+                            const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
+                            aiVerdict = formulaResult.verdict;
+                            aiAllowedCr = formulaResult.allowed;
+                            aiReason = `Formula fallback after JSON parse error for ${head.head_name}.`;
+                        }
                     }
                 }
             } else {
-                const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
-                aiVerdict = formulaResult.verdict;
-                aiAllowedCr = formulaResult.allowed;
+                if (deterministicResult.isDeterministic && deterministicResult.allowed !== null) {
+                    aiVerdict = deterministicResult.allowed < Number(head.actual_cr) ? 'partial' : 'approved';
+                    aiAllowedCr = deterministicResult.allowed;
+                    aiReason = `Applied strictly based on KSERC structural formulae. Detail: ${deterministicResult.mathDetails}`;
+                } else {
+                    const formulaResult = computeAllowedAmount(Number(head.approved_cr), Number(head.actual_cr), head.head_name, aicpi);
+                    aiVerdict = formulaResult.verdict;
+                    aiAllowedCr = formulaResult.allowed;
+                }
             }
 
             const updateData = {

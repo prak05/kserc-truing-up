@@ -109,7 +109,7 @@ export default function RulesPage() {
                         <Textarea
                             value={rules.new_rules}
                             onChange={(e) => setRules({ ...rules, new_rules: e.target.value })}
-                            className="min-h-[250px] font-mono text-xs leading-relaxed"
+                            className="min-h-[250px] text-sm leading-relaxed p-4 bg-slate-50/30"
                             placeholder="Paste preprocessed text from Electricity Act/Regulations here..."
                         />
                     </CardContent>
@@ -129,7 +129,7 @@ export default function RulesPage() {
                         <Textarea
                             value={rules.tariff_data}
                             onChange={(e) => setRules({ ...rules, tariff_data: e.target.value })}
-                            className="min-h-[250px] font-mono text-xs leading-relaxed"
+                            className="min-h-[250px] text-sm leading-relaxed p-4 bg-slate-50/30"
                             placeholder="Paste preprocessed Tariff Data here..."
                         />
                     </CardContent>
@@ -149,7 +149,7 @@ export default function RulesPage() {
                         <Textarea
                             value={rules.historical_data}
                             onChange={(e) => setRules({ ...rules, historical_data: e.target.value })}
-                            className="min-h-[250px] font-mono text-xs leading-relaxed"
+                            className="min-h-[250px] text-sm leading-relaxed p-4 bg-slate-50/30"
                             placeholder="Paste preprocessed historical cases here..."
                         />
                     </CardContent>
