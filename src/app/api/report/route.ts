@@ -60,12 +60,14 @@ export async function POST(req: NextRequest) {
             `- ${h.head_name} (${h.category}): Claimed ₹${Number(h.actual_cr).toFixed(2)} Cr. Allowed: ₹${Number(h.final_allowed_cr).toFixed(2)} Cr. (${h.final_verdict}) Reason: ${h.ai_reason}`
         ).join('\n') || 'No cost heads analyzed.';
 
-        const systemPrompt = "You are drafting an official KSERC Truing-Up Order.";
-        const userPrompt = buildReportPrompt(caseData, costHeadsSummary);
+        // Remove old userPrompt/systemPrompt string building as the Drafter Node does that now.
+        // Instead of calling single LLM, invoke the LangGraph pipeline.
+        const { runTruingUpPipeline } = await import('@/lib/graph');
 
-        const rawResponse = await callLLM(systemPrompt, userPrompt, 1500);
+        // Pass the raw data into LangGraph
+        const graphResult = await runTruingUpPipeline({ ...caseData, costHeads });
 
-        return NextResponse.json({ success: true, report_text: rawResponse });
+        return NextResponse.json({ success: true, report_text: graphResult.draftNarrative });
     } catch (error: unknown) {
         console.error('Report Gen Error:', error);
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
