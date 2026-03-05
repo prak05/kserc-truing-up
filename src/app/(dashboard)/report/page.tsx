@@ -70,22 +70,45 @@ function ReportContent() {
         const doc = new jsPDF();
         const isGap = (caseData?.revenue_gap_cr || 0) > 0;
 
-        // Header
+        // Title
         doc.setFont("times", "bold");
         doc.setFontSize(14);
-        doc.text("KERALA STATE ELECTRICITY REGULATORY COMMISSION", 105, 15, { align: "center" });
+        doc.text("KERALA STATE ELECTRICITY REGULATORY COMMISSION", 105, 20, { align: "center" });
+
         doc.setFontSize(11);
-        doc.text(`TRUING-UP ORDER: FY ${caseData?.financial_year || ''}`, 105, 22, { align: "center" });
+        doc.text("THIRUVANANTHAPURAM", 105, 26, { align: "center" });
+
+        // Members Present
+        doc.setFont("times", "bold");
+        doc.setFontSize(10);
+        doc.text("Present:", 105, 36, { align: "center" });
+        doc.setFont("times", "normal");
+        doc.text("Shri. T.K. Jose, Chairman", 105, 41, { align: "center" });
+        doc.text("Adv. A.J. Wilson, Member", 105, 46, { align: "center" });
+        doc.text("Shri. B. Pradeep, Member", 105, 51, { align: "center" });
+
+        // Separator Line
+        doc.setLineWidth(0.5);
+        doc.line(14, 55, 196, 55);
+
+        // Details
+        doc.setFont("times", "normal");
+        doc.text(`Petition No.: OP No. __ / ${new Date(orderDate).getFullYear()}`, 14, 62);
+        doc.text(`Date of Order: ${orderDate.split('-').reverse().join('-')}`, 14, 67);
+
+        doc.setFont("times", "bold");
+        doc.text("In the Matter Of:", 14, 76);
 
         doc.setFont("times", "normal");
-        doc.setFontSize(10);
-        doc.text(`Licensee: ${caseData?.licensees?.name || ''}`, 14, 35);
-        doc.text(`Order Date: ${orderDate}`, 14, 40);
-        doc.text(`Prepared By: ${preparedBy}`, 14, 45);
+        const matterText = `Petition filed by M/s ${caseData?.licensees?.name || ''} for the Truing Up of Accounts for the Financial Year ${caseData?.financial_year || ''}.`;
+        const splitMatter = doc.splitTextToSize(matterText, 180);
+        doc.text(splitMatter, 14, 81);
+
+        const afterHeaderY = 81 + (splitMatter.length * 5) + 8;
 
         // 1. Component-wise Analysis
         doc.setFont("times", "bold");
-        doc.text("1. Component-wise Analysis (₹ Crore)", 14, 60);
+        doc.text("1. Component-wise Analysis (₹ Crore)", 14, afterHeaderY);
 
         const tableBody1 = costHeads.map(h => {
             const verdict = h.final_verdict ? h.final_verdict.toUpperCase() : (Number(h.final_allowed_cr) > 0 && Number(h.final_allowed_cr) < Number(h.actual_cr) ? 'PARTIAL APPROVAL' : (Number(h.final_allowed_cr) === 0 ? 'REJECTED' : 'APPROVED'));
@@ -204,6 +227,52 @@ function ReportContent() {
             }
         });
 
+        // Add Signature Block
+        currentY += 15;
+        if (currentY > 260) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.setFont("times", "bold");
+        doc.text("Sd/-", 40, currentY, { align: "center" });
+        doc.text("Adv. A.J. Wilson", 40, currentY + 5, { align: "center" });
+        doc.text("Member", 40, currentY + 10, { align: "center" });
+
+        doc.text("Sd/-", 170, currentY, { align: "center" });
+        doc.text("B. Pradeep", 170, currentY + 5, { align: "center" });
+        doc.text("Member", 170, currentY + 10, { align: "center" });
+
+        currentY += 25;
+        doc.text("Sd/-", 105, currentY, { align: "center" });
+        doc.text("T.K. Jose", 105, currentY + 5, { align: "center" });
+        doc.text("Chairman", 105, currentY + 10, { align: "center" });
+
+        currentY += 25;
+        if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.setFont("times", "bold");
+        doc.text("Approved for issue", 105, currentY, { align: "center" });
+
+        currentY += 20;
+        doc.setFont("times", "normal");
+        doc.text("Sd/-", 105, currentY, { align: "center" });
+        doc.setFont("times", "bold");
+        doc.text("Secretary", 105, currentY + 5, { align: "center" });
+
+        currentY += 15;
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(150, 150, 150);
+        doc.line(14, currentY, 196, currentY);
+
+        doc.setFont("times", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Order dated ${orderDate.split('-').reverse().join(' ')}`, 105, currentY + 6, { align: "center" });
+
         doc.save(`KSERC_TruingUp_Order_${(caseData?.financial_year || '').replace('-', '_')}.pdf`);
     };
 
@@ -311,6 +380,72 @@ function ReportContent() {
                             children: [new TextRun({ text: cleanLine, bold: isHeading })]
                         });
                     }),
+
+                    new Paragraph({ text: "" }),
+                    new Paragraph({ text: "" }),
+                    new Paragraph({ text: "" }),
+
+                    // Signature Block
+                    new Table({
+                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        borders: {
+                            top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                            bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                            left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                            right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                            insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                            insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        },
+                        rows: [
+                            new TableRow({
+                                children: [
+                                    new TableCell({
+                                        children: [
+                                            new Paragraph({ children: [new TextRun({ text: "Sd/-", bold: true })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ children: [new TextRun({ text: "Adv. A.J. Wilson", bold: true })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ text: "Member", alignment: AlignmentType.CENTER })
+                                        ],
+                                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph({ text: "" })],
+                                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                                    }),
+                                    new TableCell({
+                                        children: [
+                                            new Paragraph({ children: [new TextRun({ text: "Sd/-", bold: true })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ children: [new TextRun({ text: "B. Pradeep", bold: true })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ text: "Member", alignment: AlignmentType.CENTER })
+                                        ],
+                                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                                    })
+                                ]
+                            }),
+                            new TableRow({
+                                children: [
+                                    new TableCell({ children: [new Paragraph({ text: "" })], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                                    new TableCell({
+                                        children: [
+                                            new Paragraph({ text: "" }),
+                                            new Paragraph({ text: "" }),
+                                            new Paragraph({ children: [new TextRun({ text: "Sd/-", bold: true })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ children: [new TextRun({ text: "T.K. Jose", bold: true })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ text: "Chairman", alignment: AlignmentType.CENTER })
+                                        ],
+                                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                                    }),
+                                    new TableCell({ children: [new Paragraph({ text: "" })], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                                ]
+                            })
+                        ]
+                    }),
+
+                    new Paragraph({ text: "" }),
+                    new Paragraph({ text: "" }),
+                    new Paragraph({ children: [new TextRun({ text: "Approved for issue", bold: true })], alignment: AlignmentType.CENTER }),
+                    new Paragraph({ text: "" }),
+                    new Paragraph({ text: "Sd/-", alignment: AlignmentType.CENTER }),
+                    new Paragraph({ children: [new TextRun({ text: "Secretary", bold: true })], alignment: AlignmentType.CENTER }),
                 ],
             }],
         });

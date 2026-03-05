@@ -343,7 +343,6 @@ function ResultsContent() {
                                     <TableRow className="hover:bg-navy">
                                         <TableHead className="text-white h-11 px-6">Line Item</TableHead>
                                         <TableHead className="text-right text-white h-11">Claimed (₹ Cr)</TableHead>
-                                        <TableHead className="text-right text-white h-11">Approved Base (₹ Cr)</TableHead>
                                         <TableHead className="text-right text-white h-11 font-bold">AI Allowed (₹ Cr)</TableHead>
                                         <TableHead className="text-center text-white h-11 px-6">Status</TableHead>
                                     </TableRow>
@@ -365,7 +364,6 @@ function ResultsContent() {
                                             >
                                                 <TableCell className="py-3.5 px-6 font-medium text-navy">{item.head_name}</TableCell>
                                                 <TableCell className="py-3.5 text-right font-mono text-slate-600">₹ {Number(item.actual_cr).toFixed(2)}</TableCell>
-                                                <TableCell className="py-3.5 text-right font-mono text-muted-foreground">₹ {Number(item.approved_cr).toFixed(2)}</TableCell>
                                                 <TableCell className={`py-3.5 text-right font-mono font-bold ${['approved', 'partial_approval'].includes(item.final_verdict?.toLowerCase()) ? 'text-green-600' : 'text-red-600'}`}>
                                                     ₹ {Number(item.final_allowed_cr).toFixed(2)}
                                                 </TableCell>

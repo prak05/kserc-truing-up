@@ -52,6 +52,10 @@ CRITICAL RULES:
         const cleanJson = rawResponse.replace(/```json|```/g, '').trim();
         const parsed = JSON.parse(cleanJson);
 
+        if (parsed.costHeads && Array.isArray(parsed.costHeads)) {
+            parsed.costHeads = parsed.costHeads.filter((ch: any) => ch.approved_cr !== 0 || ch.actual_cr !== 0);
+        }
+
         return NextResponse.json({ success: true, data: parsed });
     } catch (error: unknown) {
         console.error('Extraction Error:', error);
