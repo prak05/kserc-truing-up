@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KSERC AI Truing-Up Tool | Work Order KSERC/CSO/03-05</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--navy:#1A3557;--navy-d:#0F2238;--navy-m:#243F6E;--blue:#2C6FAC;--blu2:#3B82C4;--gold:#C8960C;--gold2:#E6B020;--page:#F2F4F7;--card:#fff;--bdr:#DEE2E8;--blt:#EEF0F4;--tx:#1C2B3A;--tx2:#5A6A7A;--muted:#9AAABB;--grn:#1A7F4B;--gbg:#DCFCE7;--red:#C0392B;--rbg:#FEE2E2;--amb:#D97706;--abg:#FEF3C7;--blbg:#EFF6FF}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans',sans-serif;background:var(--page);color:var(--tx);font-size:15px;line-height:1.6}
+/* --- TOP BAR --- */
+.top{height:60px;background:var(--navy);border-bottom:2px solid var(--gold);display:flex;align-items:center;padding:0 24px;gap:12px;position:fixed;inset:0 0 auto;z-index:300}
+.top-logo{width:38px;height:38px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'EB Garamond',serif;font-weight:700;font-size:11px;color:var(--navy);flex-shrink:0}
+.top-title{display:flex;flex-direction:column;line-height:1.2}
+.top-title b{font-size:14.5px;color:#fff;font-family:'EB Garamond',serif;font-weight:600}
+.top-title small{font-size:10px;color:var(--gold2);letter-spacing:.9px;text-transform:uppercase}
+.top-sep{width:1px;height:26px;background:rgba(255,255,255,.13)}
+.top-wo{font-size:11px;color:rgba(255,255,255,.38);letter-spacing:.4px}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:14px}
+.top-user{display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.75)}
+.ava{width:28px;height:28px;border-radius:50%;background:var(--navy-m);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.8)}
+.btn-out{font-size:11.5px;color:rgba(255,255,255,.38);cursor:pointer;padding:4px 10px;border:1px solid rgba(255,255,255,.13);border-radius:4px;transition:.15s}
+.btn-out:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+/* --- LAYOUT --- */
+.wrap{display:flex;margin-top:60px;min-height:calc(100vh - 60px)}
+/* --- SIDEBAR --- */
+.side{width:216px;background:var(--navy-d);position:fixed;top:60px;bottom:0;left:0;display:flex;flex-direction:column;overflow-y:auto;z-index:100}
+.sb-sec{padding:16px 0 6px}
+.sb-lbl{font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.2);padding:0 16px 7px;font-weight:700}
+.nav{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;transition:.12s;font-size:13px;color:rgba(255,255,255,.48);border-left:2px solid transparent}
+.nav:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);border-left-color:rgba(200,150,12,.35)}
+.nav.on{background:rgba(44,111,172,.2);color:#fff;border-left-color:var(--gold)}
+.nav svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.nav.on svg,.nav:hover svg{opacity:1}
+.sb-bot{margin-top:auto;padding:13px 16px;border-top:1px solid rgba(255,255,255,.06);font-size:9.5px;color:rgba(255,255,255,.16);line-height:1.8}
+/* --- MAIN --- */
+.main{margin-left:216px;flex:1;padding:26px 30px 60px;min-width:0}
+.view{display:none}.view.on{display:block}
+/* --- PAGE HDR --- */
+.bc{font-size:12px;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.bc span{cursor:pointer;transition:.1s}.bc span:hover{color:var(--blue)}
+.pg-title{font-family:'EB Garamond',serif;font-size:26px;font-weight:600;color:var(--navy);letter-spacing:.2px}
+.pg-sub{font-size:13px;color:var(--tx2);margin-top:2px}
+.pg-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:20px}
+/* --- ALERTS --- */
+.alert{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:4px;margin-bottom:14px;font-size:13.5px;line-height:1.5}
+.alert svg{flex-shrink:0;margin-top:2px}
+.alert.info{background:#E0F2FE;border-left:3px solid #0891B2;color:#0C5A70}
+.alert.warn{background:var(--abg);border-left:3px solid var(--amb);color:#78350F}
+.alert.ok{background:var(--gbg);border-left:3px solid var(--grn);color:#14532D}
+.alert.err{background:var(--rbg);border-left:3px solid var(--red);color:#7F1D1D}
+/* --- BTNS --- */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13.5px;font-weight:600;border-radius:5px;border:none;cursor:pointer;transition:.14s;font-family:'Noto Sans',sans-serif;white-space:nowrap}
+.bp{background:var(--blue);color:#fff}.bp:hover{background:var(--blu2)}
+.bs{background:#fff;color:var(--blue);border:1.5px solid var(--blue)}.bs:hover{background:var(--blbg)}
+.bd{background:var(--red);color:#fff}.bd:hover{filter:brightness(1.1)}
+.btn.sm{padding:6px 11px;font-size:12.5px}
+.btn.xs{padding:4px 8px;font-size:11.5px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+/* --- CARDS --- */
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:6px;overflow:hidden;margin-bottom:14px}
+.c-hdr{padding:12px 18px;border-bottom:1px solid var(--blt);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.c-ttl{font-size:13.5px;font-weight:700;color:var(--tx)}
+.c-bdy{padding:18px}
+/* --- BADGES --- */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px}
+.bg{background:var(--gbg);color:var(--grn)}.br{background:var(--rbg);color:var(--red)}.ba{background:var(--abg);color:var(--amb)}.bb{background:var(--blbg);color:var(--blue)}.bgr{background:#F1F5F9;color:#475569}
+/* --- KPI --- */
+.kpi-row{display:grid;gap:12px;margin-bottom:18px}
+.kpi-row.c4{grid-template-columns:repeat(4,1fr)}.kpi-row.c3{grid-template-columns:repeat(3,1fr)}
+.kpi{background:var(--card);border:1px solid var(--bdr);border-radius:6px;padding:15px 17px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--navy)}
+.kpi.kred::before{background:var(--red)}.kpi.kgrn::before{background:var(--grn)}.kpi.kamb::before{background:var(--amb)}.kpi.kblu::before{background:var(--blue)}
+.kpi-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--tx2);font-weight:600;margin-bottom:4px}
+.kpi-val{font-family:'Source Code Pro',monospace;font-size:22px;font-weight:700;line-height:1;margin-bottom:3px}
+.kv-r{color:var(--red)}.kv-g{color:var(--grn)}.kv-a{color:var(--amb)}.kv-n{color:var(--navy)}
+.kpi-sub{font-size:11.5px;color:var(--muted)}
+/* --- TABLES --- */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead tr{background:var(--navy);color:#fff}
+thead th{padding:10px 12px;text-align:left;font-size:11.5px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+thead th.nr{text-align:right}
+tbody tr{border-bottom:1px solid var(--blt);transition:.1s;cursor:pointer}
+tbody tr:hover{background:#EBF3FB}
+tbody tr.fl{background:#FFFBEB}tbody tr.rj{background:#FFF5F5}
+tbody tr.fl:hover{background:var(--abg)}tbody tr.rj:hover{background:var(--rbg)}
+tbody td{padding:10px 12px;vertical-align:middle}
+tbody td.nr{text-align:right;font-family:'Source Code Pro',monospace;font-size:13px;font-weight:500}
+.tf{padding:10px 14px;background:#F8F9FB;border-top:1px solid var(--blt);display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--tx2)}
+/* --- FORM --- */
+label.lbl{font-size:11.5px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px}
+input,select,textarea{font-family:'Noto Sans',sans-serif;font-size:14px;padding:8px 11px;border:1.5px solid var(--bdr);border-radius:5px;background:#fff;color:var(--tx);width:100%;transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(44,111,172,.1)}
+textarea{resize:vertical;min-height:60px}
+.frow{display:grid;gap:12px;margin-bottom:12px}
+.fc2{grid-template-columns:1fr 1fr}
+.ferr{font-size:11.5px;color:var(--red);margin-top:3px}
+/* --- UPLOAD ZONES --- */
+.drop-zone{border:2px dashed var(--bdr);border-radius:6px;padding:22px;text-align:center;cursor:pointer;transition:.15s;background:#fff}
+.drop-zone:hover{border-color:var(--blue);background:var(--blbg)}
+.drop-zone.uploaded{border-color:var(--grn);background:var(--gbg);border-style:solid}
+.drop-zone.uploading{border-color:var(--amb);background:var(--abg);border-style:solid}
+.dz-icon{font-size:28px;margin-bottom:6px}
+.dz-title{font-size:14px;font-weight:600;color:var(--tx);margin-bottom:3px}
+.dz-sub{font-size:12px;color:var(--muted)}
+input[type=file]{display:none}
+/* --- STEP INDICATOR --- */
+.steps{display:flex;border-bottom:2px solid var(--bdr);margin-bottom:22px}
+.step{display:flex;align-items:center;gap:8px;padding:10px 18px;font-size:13px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;flex:1;justify-content:center}
+.step.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:700}
+.step.done{color:var(--grn);border-bottom-color:var(--grn)}
+.step-n{width:22px;height:22px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.step.done .step-n{background:var(--grn);border-color:var(--grn);color:#fff}
+/* --- ANALYSIS PROGRESS --- */
+.pbar-wrap{height:10px;background:var(--bdr);border-radius:5px;overflow:hidden;margin-bottom:8px}
+.pbar{height:100%;border-radius:5px;transition:width .5s ease;background:var(--blue)}
+.pbar.green{background:var(--grn)}
+.log{background:#0F2238;border-radius:5px;padding:12px;height:180px;overflow-y:auto;font-family:'Source Code Pro',monospace;font-size:11.5px;line-height:1.9}
+.ll{color:rgba(255,255,255,.55);animation:lin .2s ease}
+.ll.ok{color:#4ade80}.ll.warn{color:#fbbf24}.ll.hi{color:#fff}
+@keyframes lin{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:translateX(0)}}
+/* --- REASONING PANEL --- */
+.rp{background:var(--card);border:1px solid var(--bdr);border-radius:6px;overflow:hidden;display:none;margin-top:16px}
+.rp.show{display:block}
+.rp-hdr{background:var(--navy);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.rp-ttl{font-size:13px;font-weight:600;color:#fff}
+.rp-close{font-size:11.5px;color:rgba(255,255,255,.4);cursor:pointer;padding:2px 8px;border:1px solid rgba(255,255,255,.13);border-radius:3px;transition:.12s}
+.rp-close:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+.rp-bdy{padding:18px}
+.rs{display:flex;gap:12px;margin-bottom:12px}
+.rs-n{width:24px;height:24px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.rs-l{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:2px}
+.rs-t{font-size:13.5px;color:var(--tx);line-height:1.5}
+.rs-f{font-family:'Source Code Pro',monospace;font-size:12.5px;background:#F1F5F9;border:1px solid var(--bdr);border-radius:4px;padding:7px 11px;margin-top:5px;color:var(--navy);white-space:pre-wrap}
+.rs-d{margin-top:6px;padding:7px 10px;background:var(--rbg);border-radius:4px;font-size:13px;color:var(--red);font-weight:500}
+.rs-d.ok{background:var(--gbg);color:var(--grn)}
+.rs-c{font-size:11.5px;color:var(--blue);margin-top:4px;font-style:italic}
+/* --- COMPUTATION TABLE --- */
+.ct{width:100%;border-collapse:collapse}
+.ct tr{border-bottom:1px solid var(--blt)}
+.ct tr:last-child{border-bottom:none}
+.ct td{padding:8px 2px;font-size:13.5px}
+.ct td:last-child{text-align:right;font-family:'Source Code Pro',monospace;font-size:13px;font-weight:500}
+.ct .tot td{font-weight:700;border-top:2px solid var(--bdr);padding-top:10px}
+.ct .tot td:last-child{color:var(--red);font-size:15px}
+.ct-note{font-size:11px;color:var(--muted)}
+/* --- OUTCOME --- */
+.outcome{padding:12px 15px;border-radius:4px;border-left:3px solid var(--red);background:var(--rbg);display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.outcome.sur{background:var(--gbg);border-left-color:var(--grn)}
+.out-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--red)}
+.outcome.sur .out-lbl{color:var(--grn)}
+.out-val{font-family:'Source Code Pro',monospace;font-size:21px;font-weight:700;color:var(--red)}
+.outcome.sur .out-val{color:var(--grn)}
+/* --- REJECTION BOX --- */
+.rej-box{background:#FFF5F5;border:1px solid #FECACA;border-radius:5px;padding:12px 15px;margin-bottom:14px}
+.rej-ttl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--red);margin-bottom:8px}
+/* --- MODAL --- */
+.modal-bg{position:fixed;inset:0;background:rgba(10,20,40,.5);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:8px;width:500px;max-width:94vw;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.m-hdr{background:var(--navy);padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
+.m-ttl{color:#fff;font-weight:600;font-size:15px;font-family:'EB Garamond',serif}
+.m-x{color:rgba(255,255,255,.4);cursor:pointer;font-size:18px;transition:.12s}.m-x:hover{color:#fff}
+.m-bdy{padding:22px}
+/* --- MANUAL ENTRY --- */
+.manual-field{background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:10px 12px;margin-bottom:8px}
+.mf-lbl{font-size:11.5px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+/* --- TWO COL --- */
+.tcol{display:grid;grid-template-columns:1fr 330px;gap:16px;align-items:start}
+/* --- OVERRIDE --- */
+.ov-box{display:none;margin-top:6px;padding:9px 11px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px}
+.ov-box.show{display:block}
+/* --- AI CHAT --- */
+.ai-box{border:1px solid var(--bdr);border-radius:6px;overflow:hidden}
+.ai-hdr{background:var(--navy-d);padding:10px 14px;display:flex;align-items:center;gap:8px}
+.ai-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.ai-msgs{height:250px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;background:#F8F9FB}
+.ai-msg{max-width:92%;padding:8px 12px;border-radius:5px;font-size:13px;line-height:1.5}
+.ai-msg.bot{background:#fff;border:1px solid var(--bdr);align-self:flex-start}
+.ai-msg.usr{background:var(--blue);color:#fff;align-self:flex-end}
+.ai-lbl{font-size:9.5px;font-weight:700;margin-bottom:3px;opacity:.55;text-transform:uppercase;letter-spacing:.5px}
+.ai-inp-row{display:flex;padding:9px;gap:7px;border-top:1px solid var(--bdr);background:#fff}
+.ai-inp{flex:1;padding:7px 10px;font-size:13px;border:1px solid var(--bdr);border-radius:4px;font-family:'Noto Sans',sans-serif}
+.ai-inp:focus{outline:none;border-color:var(--blue)}
+/* --- LOGIN --- */
+.login-pg{min-height:100vh;background:var(--navy);display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:#fff;border-radius:10px;width:410px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.lc-top{background:var(--navy);padding:30px 30px 22px;text-align:center;border-bottom:2px solid var(--gold)}
+.lc-logos{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
+.lc-logo{width:50px;height:50px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'EB Garamond',serif;font-weight:700;font-size:12px;color:var(--navy)}
+.lc-h1{font-family:'EB Garamond',serif;font-size:19px;color:#fff;font-weight:600;margin-bottom:4px}
+.lc-h2{font-size:11.5px;color:var(--gold2);letter-spacing:.5px}
+.lc-bdy{padding:26px 30px}
+.lc-bdy label{display:block;font-size:12px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;margin-top:13px}
+.lc-bdy label:first-of-type{margin-top:0}
+.lc-ft{padding:12px 30px;background:#F7F8FA;border-top:1px solid var(--bdr);text-align:center;font-size:11px;color:var(--muted)}
+/* ANIM */
+.fade{animation:fadein .22s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+/* DIVIDER */
+.div-lbl{display:flex;align-items:center;gap:10px;margin:20px 0 14px}
+.div-lbl-line{flex:1;height:1px;background:var(--bdr)}
+.div-lbl-txt{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);font-weight:700;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═════════════════════════════════════════════════ -->
+<div id="pg-login" class="login-pg">
+  <div class="login-card">
+    <div class="lc-top">
+      <div class="lc-logos">
+        <div class="lc-logo">KSERC</div>
+        <div style="width:1px;height:38px;background:rgba(255,255,255,.2)"></div>
+        <div class="lc-logo" style="font-size:11px">RIET</div>
+      </div>
+      <div class="lc-h1">Kerala State Electricity Regulatory Commission</div>
+      <div class="lc-h2">AI TRUING-UP ANALYTICAL TOOL — FY 2024-25</div>
+    </div>
+    <div class="lc-bdy">
+      <label>Username</label>
+      <input id="lu" type="text" placeholder="staff@kserc.gov.in">
+      <label>Password</label>
+      <input id="lp" type="password" placeholder="••••••••">
+      <div id="lerr" style="display:none" class="ferr">Incorrect credentials. Please try again.</div>
+      <button class="btn bp" style="width:100%;margin-top:18px;justify-content:center;font-size:14px;padding:11px" onclick="doLogin()">Login to KSERC Portal</button>
+    </div>
+    <div class="lc-ft">Authorized access only &nbsp;·&nbsp; Work Order KSERC/CSO/03-05 &nbsp;·&nbsp; RIET Thiruvananthapuram</div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══════════════════════════════════════════════════ -->
+<div id="pg-app" style="display:none">
+
+  <!-- TOP -->
+  <header class="top">
+    <div class="top-logo">KSERC</div>
+    <div class="top-title"><b>Kerala State Electricity Regulatory Commission</b><small>AI Truing-Up Analytical Tool</small></div>
+    <div class="top-sep"></div>
+    <span class="top-wo">Work Order KSERC/CSO/03-05 &nbsp;·&nbsp; RIET Thiruvananthapuram</span>
+    <div class="top-r">
+      <div class="top-user"><div class="ava">PS</div><span id="top-name">KSERC Staff</span></div>
+      <span class="btn-out" onclick="doLogout()">Logout</span>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- SIDEBAR -->
+    <nav class="side">
+      <div class="sb-sec">
+        <div class="sb-lbl">Main</div>
+        <div class="nav on" id="n-upload" onclick="go('upload')">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4-4 4M12 4v12"/></svg>Upload & Analyse
+        </div>
+        <div class="nav" id="n-results" onclick="go('results')">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Analysis Results
+        </div>
+        <div class="nav" id="n-report" onclick="go('report')">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Generate Report
+        </div>
+      </div>
+      <div class="sb-sec">
+        <div class="sb-lbl">Reference</div>
+        <div class="nav" id="n-rules" onclick="go('rules')">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Regulatory Rules
+        </div>
+      </div>
+      <div class="sb-bot">v0.1 · RIET ISR Project<br>AI: Claude Sonnet 4 + Gemini<br>Work Order: KSERC/CSO/03-05<br>All data from uploaded documents</div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- ═══ UPLOAD & ANALYSE ═══════════════════════════════ -->
+      <div class="view on fade" id="view-upload">
+        <div class="bc"><span>Home</span></div>
+        <div class="pg-row">
+          <div><div class="pg-title">Upload & Analyse Documents</div><div class="pg-sub">Upload actual KSERC documents — all analysis is performed on the real data extracted from your files. No pre-loaded data.</div></div>
+        </div>
+
+        <div class="alert info"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg><div><b>How this works:</b> Upload your documents below. The AI reads them, extracts every financial figure, applies all KSERC regulatory formulas, and shows you the computed Revenue Gap or Surplus — from your actual data, not any template.</div></div>
+
+        <!-- Step 1: Session Config -->
+        <div class="card">
+          <div class="c-hdr"><span class="c-ttl">Step 1 — Session Details</span></div>
+          <div class="c-bdy">
+            <div class="frow fc2">
+              <div>
+                <label class="lbl">Distribution Licensee</label>
+                <select id="sel-lic">
+                  <option value="">— Select licensee —</option>
+                  <option value="Infoparks Kerala">Infoparks Kerala</option>
+                  <option value="Electronics Technology Parks – Kerala (Technopark)">Technopark</option>
+                  <option value="Kanan Devan Hills Plantations Company Pvt Ltd">KDHPCL</option>
+                  <option value="Cochin Special Economic Zone Authority (CSEZA)">CSEZA</option>
+                  <option value="Other">Other (specify below)</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl">Financial Year</label>
+                <select id="sel-fy">
+                  <option>2024-25</option><option>2023-24</option><option>2022-23</option><option>2021-22</option><option>2020-21</option>
+                </select>
+              </div>
+            </div>
+            <div id="other-lic-wrap" style="display:none;margin-top:6px">
+              <label class="lbl">Licensee Name (Custom)</label>
+              <input id="other-lic" type="text" placeholder="Enter full licensee name...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Upload Documents -->
+        <div class="card">
+          <div class="c-hdr"><span class="c-ttl">Step 2 — Upload Documents</span><span class="badge bgr" id="upload-badge">0 / 4 uploaded</span></div>
+          <div class="c-bdy">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="dz-grid">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Annual Accounts (Audited) <span style="color:var(--red)">*Required</span></div>
+                <div class="drop-zone" id="dz-0" onclick="document.getElementById('fi-0').click()">
+                  <input type="file" id="fi-0" accept=".pdf,.xlsx,.xls" onchange="handleFile(0,this)">
+                  <div class="dz-icon">📄</div><div class="dz-title">Click to upload</div><div class="dz-sub">PDF or Excel · Max 50MB</div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">ARR Order (Commission-approved) <span style="color:var(--red)">*Required</span></div>
+                <div class="drop-zone" id="dz-1" onclick="document.getElementById('fi-1').click()">
+                  <input type="file" id="fi-1" accept=".pdf,.xlsx,.xls" onchange="handleFile(1,this)">
+                  <div class="dz-icon">📋</div><div class="dz-title">Click to upload</div><div class="dz-sub">PDF · Required</div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Previous Truing-Up Order <span style="color:var(--muted)">(Recommended)</span></div>
+                <div class="drop-zone" id="dz-2" onclick="document.getElementById('fi-2').click()">
+                  <input type="file" id="fi-2" accept=".pdf,.xlsx,.xls" onchange="handleFile(2,this)">
+                  <div class="dz-icon">📁</div><div class="dz-title">Click to upload</div><div class="dz-sub">PDF · For normative cap reference</div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Tariff Schedule / Energy Audit <span style="color:var(--muted)">(Optional)</span></div>
+                <div class="drop-zone" id="dz-3" onclick="document.getElementById('fi-3').click()">
+                  <input type="file" id="fi-3" accept=".pdf,.xlsx,.xls" onchange="handleFile(3,this)">
+                  <div class="dz-icon">⚡</div><div class="dz-title">Click to upload</div><div class="dz-sub">PDF or Excel · AT&C loss data</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="div-lbl"><div class="div-lbl-line"></div><div class="div-lbl-txt">Analysis Parameters</div><div class="div-lbl-line"></div></div>
+            <div class="frow fc2">
+              <div><label class="lbl">AICPI Escalation Rate (%) for the year</label><input id="aicpi" type="number" value="4.2" min="0" max="20" step="0.1" placeholder="e.g. 4.2"></div>
+              <div><label class="lbl">SBI Term Deposit Rate (%) for surplus interest</label><input id="sbi-rate" type="number" value="6.5" min="0" max="15" step="0.1" placeholder="e.g. 6.5"></div>
+            </div>
+
+            <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--blt);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn bp" id="btn-run" disabled onclick="runAnalysis()">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                Run AI Analysis
+              </button>
+              <span id="run-hint" style="font-size:12px;color:var(--muted)">Upload Annual Accounts and ARR Order to proceed.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ANALYSIS IN PROGRESS -->
+        <div class="card" id="progress-card" style="display:none">
+          <div class="c-hdr"><span class="c-ttl">AI Analysis in Progress</span><span class="badge bb" id="prog-status-badge">Processing...</span></div>
+          <div class="c-bdy">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:13px;color:var(--tx2)" id="prog-lbl">Initializing...</span>
+              <span style="font-family:'Source Code Pro',monospace;font-size:13px;font-weight:700;color:var(--navy)" id="prog-pct">0%</span>
+            </div>
+            <div class="pbar-wrap"><div class="pbar" id="pbar" style="width:0"></div></div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Please wait. Do not close this window. Analysis may take 1–3 minutes depending on document size.</div>
+            <div class="log" id="log-box"></div>
+          </div>
+        </div>
+      </div><!-- /upload -->
+
+      <!-- ═══ RESULTS ═══════════════════════════════════════════ -->
+      <div class="view fade" id="view-results">
+        <div class="bc"><span onclick="go('upload')">Upload & Analyse</span> › <span style="color:var(--tx)">Results</span></div>
+        <div class="pg-row">
+          <div>
+            <div class="pg-title">Truing-Up Analysis Results</div>
+            <div class="pg-sub" id="res-subtitle">—</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span class="badge ba" id="res-status-pill">Pending Review</span>
+            <button class="btn bs sm" onclick="go('upload')">← New Analysis</button>
+            <button class="btn bp sm" onclick="go('report')">Generate PDF Report →</button>
+          </div>
+        </div>
+
+        <!-- Anomaly Alert (shown only if triggered) -->
+        <div class="alert err" id="anomaly-alert" style="display:none">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <div id="anomaly-text"></div>
+        </div>
+
+        <!-- Manual Entry Alert (shown if values not extracted) -->
+        <div class="alert warn" id="manual-alert" style="display:none">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <div>Some values could not be extracted from the documents. Fields marked <b>"NOT FOUND"</b> require manual entry. Enter the correct values and click <b>Recalculate</b>.</div>
+        </div>
+
+        <!-- Perennial Rejections (shown only if found in documents) -->
+        <div class="rej-box" id="rej-box" style="display:none">
+          <div class="rej-ttl">Perennial Rejections Automatically Applied — ₹0.00 Approved</div>
+          <div id="rej-items"></div>
+        </div>
+
+        <div class="kpi-row c4" id="kpi-row">
+          <div class="kpi kred"><div class="kpi-lbl">Revenue Gap / Surplus</div><div class="kpi-val" id="kpi-gap">—</div><div class="kpi-sub" id="kpi-gap-sub">—</div></div>
+          <div class="kpi kamb"><div class="kpi-lbl">Claimed by Licensee</div><div class="kpi-val kv-a" id="kpi-claimed">—</div><div class="kpi-sub">From petition / annual accounts</div></div>
+          <div class="kpi kblu"><div class="kpi-lbl">AT&C Loss</div><div class="kpi-val kv-n" id="kpi-atc">—</div><div class="kpi-sub" id="kpi-atc-sub">—</div></div>
+          <div class="kpi kblu"><div class="kpi-lbl">Total Disallowed</div><div class="kpi-val kv-r" id="kpi-disallowed">—</div><div class="kpi-sub">Rejected + Capped amounts</div></div>
+        </div>
+
+        <div class="tcol">
+          <div>
+            <!-- Line Items Table -->
+            <div class="card">
+              <div class="c-hdr"><span class="c-ttl">Line-Item Validation</span><span style="font-size:12px;color:var(--muted)" id="li-subtitle">—</span></div>
+              <div class="tw">
+                <table id="li-table">
+                  <thead><tr>
+                    <th style="width:27%">Line Item</th>
+                    <th class="nr">Claimed (₹L)</th>
+                    <th class="nr">Normative Cap</th>
+                    <th class="nr">AI Recommended</th>
+                    <th class="nr">Disallowed</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr></thead>
+                  <tbody id="li-tbody"></tbody>
+                </table>
+              </div>
+              <div class="tf"><span id="li-summary">—</span><span style="color:var(--red);font-family:'Source Code Pro',monospace;font-weight:700" id="li-total-dis">—</span></div>
+            </div>
+
+            <!-- Reasoning Panel -->
+            <div class="rp" id="reas-panel">
+              <div class="rp-hdr"><div class="rp-ttl" id="rp-title">AI Reasoning</div><span class="rp-close" onclick="closeReas()">Close ✕</span></div>
+              <div class="rp-bdy" id="rp-body"></div>
+            </div>
+
+            <!-- Manual Entry for NOT FOUND values -->
+            <div class="card" id="manual-card" style="display:none">
+              <div class="c-hdr"><span class="c-ttl">Manual Entry — Values Not Extracted</span></div>
+              <div class="c-bdy">
+                <div class="alert warn" style="margin-bottom:14px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>The AI could not extract these values from your documents. Enter them manually from the source documents.</div>
+                <div id="manual-fields"></div>
+                <button class="btn bp" style="margin-top:12px" onclick="recalculate()">Recalculate with Manual Values</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <!-- Revenue Gap Computation -->
+            <div class="card">
+              <div class="c-hdr"><span class="c-ttl">Revenue Gap Computation</span></div>
+              <div class="c-bdy">
+                <table class="ct" id="comp-table">
+                  <tr><td>Approved ARR<br><span class="ct-note">Commission-sanctioned ceiling</span></td><td id="ct-arr" style="color:var(--blue)">—</td></tr>
+                  <tr><td>Less: Non-Tariff Income<br><span class="ct-note">Deducted from ARR</span></td><td id="ct-nti" style="color:var(--red)">—</td></tr>
+                  <tr><td><b>Net Approved ARR</b></td><td id="ct-net-arr" style="color:var(--navy);font-weight:700">—</td></tr>
+                  <tr><td>Actual Revenue Collected<br><span class="ct-note">Realized from tariff</span></td><td id="ct-actual" style="color:var(--grn)">—</td></tr>
+                  <tr class="tot"><td><b>Revenue Gap / Surplus</b></td><td id="ct-gap">—</td></tr>
+                </table>
+                <div class="outcome" id="outcome-block">
+                  <div class="out-lbl" id="outcome-lbl">COMPUTING...</div>
+                  <div class="out-val" id="outcome-val">—</div>
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.7">
+                  Formula: Gap = Approved ARR − Actual Revenue<br>
+                  Positive = Gap (licensee owed money)<br>
+                  Negative = Surplus (licensee collected excess)
+                </div>
+              </div>
+            </div>
+
+            <!-- AT&C Card -->
+            <div class="card" id="atc-card" style="display:none">
+              <div class="c-hdr"><span class="c-ttl">AT&C Loss Analysis</span><span class="badge" id="atc-badge">—</span></div>
+              <div class="c-bdy">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px" id="atc-grid"></div>
+                <div style="font-size:11.5px;color:var(--tx2);margin-top:4px" id="atc-note"></div>
+              </div>
+            </div>
+
+            <!-- AI Chat -->
+            <div class="card">
+              <div class="c-hdr"><span class="c-ttl">Ask KSERC-Analyst AI</span><span class="badge bb">Live AI</span></div>
+              <div class="ai-box">
+                <div class="ai-hdr"><div class="ai-dot"></div><span style="font-size:12.5px;color:#fff;font-family:'EB Garamond',serif;font-weight:600">KSERC-Analyst (Claude Sonnet 4)</span></div>
+                <div class="ai-msgs" id="ai-msgs">
+                  <div class="ai-msg bot"><div class="ai-lbl">KSERC-Analyst</div>Analysis complete. Ask me about any line item, the revenue gap computation, or any regulatory rule applied.</div>
+                </div>
+                <div class="ai-inp-row">
+                  <input class="ai-inp" id="ai-inp" placeholder="e.g. Why was Employee Cost capped?" onkeydown="if(event.key==='Enter')sendAI()">
+                  <button class="btn bp sm" id="ai-btn" onclick="sendAI()">Ask</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /results -->
+
+      <!-- ═══ REPORT GENERATION ══════════════════════════════ -->
+      <div class="view fade" id="view-report">
+        <div class="bc"><span onclick="go('upload')">Home</span> › <span onclick="go('results')">Results</span> › <span style="color:var(--tx)">Generate Report</span></div>
+        <div class="pg-row">
+          <div><div class="pg-title">Generate Truing-Up Order</div><div class="pg-sub" id="rpt-subtitle">—</div></div>
+        </div>
+        <div id="no-results-warn" class="alert warn" style="display:none">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          No analysis results found. <a onclick="go('upload')" style="color:var(--amb);cursor:pointer;font-weight:700">Run an analysis first →</a>
+        </div>
+        <div id="report-ready-section">
+          <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
+            <div>
+              <div class="card">
+                <div class="c-hdr"><span class="c-ttl">Report Checklist</span></div>
+                <div class="c-bdy" id="rpt-checklist" style="font-size:13.5px;display:flex;flex-direction:column;gap:7px"></div>
+              </div>
+              <div class="card">
+                <div class="c-hdr"><span class="c-ttl">Download Report</span></div>
+                <div class="c-bdy">
+                  <div class="frow fc2">
+                    <div>
+                      <label class="lbl">Prepared By</label>
+                      <input id="rpt-by" type="text" placeholder="Prakhar Sharma, RIET">
+                    </div>
+                    <div>
+                      <label class="lbl">Date of Order</label>
+                      <input id="rpt-date" type="date">
+                    </div>
+                  </div>
+                  <div style="margin-bottom:14px">
+                    <label class="lbl">Additional Remarks (Optional)</label>
+                    <textarea id="rpt-remarks" placeholder="Any additional commission remarks..."></textarea>
+                  </div>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button class="btn bp" onclick="generatePDF()">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      Download PDF Report
+                    </button>
+                  </div>
+                  <div id="pdf-status" style="margin-top:10px;font-size:13px;color:var(--tx2)"></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="card">
+                <div class="c-hdr"><span class="c-ttl">Session Summary</span></div>
+                <div class="c-bdy" id="rpt-summary" style="font-size:13.5px;display:flex;flex-direction:column;gap:8px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /report -->
+
+      <!-- ═══ REGULATORY RULES ═══════════════════════════════ -->
+      <div class="view fade" id="view-rules">
+        <div class="bc"><span>Home</span> › <span style="color:var(--tx)">Regulatory Rules</span></div>
+        <div class="pg-row"><div><div class="pg-title">Regulatory Rules Reference</div><div class="pg-sub">Hardcoded KSERC rules applied to every analysis — these never change without a new regulation</div></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card"><div class="c-hdr"><span class="c-ttl">Perennial Rejections (Always ₹0)</span></div><div class="c-bdy" style="font-size:13.5px;display:flex;flex-direction:column;gap:10px">
+            <div><div style="font-weight:600">1. Section 3(1) Electricity Duty</div><div style="font-size:12px;color:var(--muted)">Cannot be passed to consumers. Kerala Electricity Duty Act. No exceptions.</div></div>
+            <div><div style="font-weight:600">2. CSR (Corporate Social Responsibility) Expenses</div><div style="font-size:12px;color:var(--muted)">Appropriation of profit. Companies Act 2013, Section 135. Not a cost of distribution.</div></div>
+            <div><div style="font-weight:600">3. RPO Liability Provisions</div><div style="font-size:12px;color:var(--muted)">Only actual REC payments allowed. Provisions/liabilities disallowed.</div></div>
+          </div></div>
+          <div class="card"><div class="c-hdr"><span class="c-ttl">O&M Normative Cap</span></div><div class="c-bdy" style="font-size:13.5px">
+            <div style="font-family:'Source Code Pro',monospace;font-size:12.5px;background:#F1F5F9;border:1px solid var(--bdr);border-radius:4px;padding:10px 12px;line-height:1.9">Cap = Prev.Approved × (1 + AICPI_rate)<br><br>Covers: Employee Cost + R&M + A&G<br>Regulation: KSERC Tariff Regs 2021, Reg. 12(3)<br><br>Exception: One-time documented expenses<br>may be approved above the cap</div>
+          </div></div>
+          <div class="card"><div class="c-hdr"><span class="c-ttl">AT&C Loss & 2/3 Efficiency Rule</span></div><div class="c-bdy" style="font-size:13.5px">
+            <div style="font-family:'Source Code Pro',monospace;font-size:12.5px;background:#F1F5F9;border:1px solid var(--bdr);border-radius:4px;padding:10px 12px;line-height:1.9">AT&C Loss = ((Input − Sold) / Input) × 100<br><br>If Actual Loss &lt; Target:<br>  Gain(MU) = (Target% − Actual%) × Input / 100<br>  Savings = Gain(MU) × PP_Cost_per_unit<br>  Licensee keeps: (2/3) × Savings</div>
+          </div></div>
+          <div class="card"><div class="c-hdr"><span class="c-ttl">Core Revenue Gap Formula</span></div><div class="c-bdy" style="font-size:13.5px">
+            <div style="font-family:'Source Code Pro',monospace;font-size:12.5px;background:#F1F5F9;border:1px solid var(--bdr);border-radius:4px;padding:10px 12px;line-height:1.9">Gap = Approved_ARR − Actual_Revenue<br><br>Positive → GAP (owed to licensee)<br>Negative → SURPLUS (excess collected)<br><br>Sanity bounds:<br>  Max Surplus: ₹280.42L (Technopark 2020-21)<br>  Max Gap: ₹64.72L (Infopark 2024-25)</div>
+          </div></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────
+const STATE = {
+  licensee: '', fy: '',
+  files: [null, null, null, null],
+  filesData: [null, null, null, null], // base64
+  uploadCount: 0,
+  extraction: null,    // raw extraction from Claude
+  lineItems: [],       // computed line items
+  computedGap: null,
+  manualNeeded: {},    // fields that need manual entry
+  aicpi: 4.2,
+  sbiRate: 6.5
+};
+
+// ─────────────────────────────────────────────────────────────
+// NAV + LOGIN
+// ─────────────────────────────────────────────────────────────
+function go(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  document.getElementById('view-'+view).classList.add('on','fade');
+  const nav = document.getElementById('n-'+view);
+  if(nav) nav.classList.add('on');
+  if(view==='report') prepareReport();
+  window.scrollTo(0,0);
+}
+function doLogin(){
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value.trim();
+  if(!u||!p){document.getElementById('lerr').style.display='block';return;}
+  document.getElementById('lerr').style.display='none';
+  document.getElementById('pg-login').style.display='none';
+  document.getElementById('pg-app').style.display='block';
+  document.getElementById('top-name').textContent=u;
+}
+function doLogout(){
+  document.getElementById('pg-app').style.display='none';
+  document.getElementById('pg-login').style.display='flex';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  document.getElementById('lu').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('lp').focus();});
+  document.getElementById('sel-lic').addEventListener('change',function(){
+    document.getElementById('other-lic-wrap').style.display=this.value==='Other'?'block':'none';
+  });
+  document.getElementById('rpt-date').value=new Date().toISOString().split('T')[0];
+});
+
+// ─────────────────────────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────────────────────────
+function handleFile(idx, input){
+  const file = input.files[0];
+  if(!file) return;
+  const maxMB = 50;
+  if(file.size > maxMB*1024*1024){alert(`File exceeds ${maxMB}MB limit. Please compress the document.`);return;}
+  const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel'];
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!allowed.includes(file.type)&&!['pdf','xlsx','xls'].includes(ext)){
+    alert('Invalid file type. Only PDF and Excel files are accepted.');return;
+  }
+  STATE.files[idx] = file;
+  const dz = document.getElementById('dz-'+idx);
+  dz.className='drop-zone uploading';
+  dz.innerHTML=`<div style="color:var(--amb);font-size:18px;margin-bottom:4px">⏳</div><div class="dz-title">Reading ${file.name}...</div><div class="dz-sub">${(file.size/1024/1024).toFixed(2)} MB</div>`;
+  // Read as base64
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result.split(',')[1];
+    STATE.filesData[idx] = {name:file.name, type:file.type||'application/pdf', data:b64};
+    STATE.files[idx] = file;
+    STATE.uploadCount = STATE.filesData.filter(f=>f!==null).length;
+    dz.className='drop-zone uploaded';
+    dz.innerHTML=`<div style="color:var(--grn);font-size:18px;margin-bottom:4px">✓</div><div class="dz-title">${file.name}</div><div class="dz-sub" style="color:var(--grn)">${(file.size/1024/1024).toFixed(2)} MB · Ready</div>`;
+    document.getElementById('upload-badge').textContent=STATE.uploadCount+' / 4 uploaded';
+    document.getElementById('upload-badge').className=STATE.uploadCount>=4?'badge bg':STATE.uploadCount>=2?'badge bb':'badge bgr';
+    // Enable run button if at least 2 required docs uploaded (idx 0 and 1)
+    if(STATE.filesData[0]&&STATE.filesData[1]){
+      document.getElementById('btn-run').disabled=false;
+      document.getElementById('run-hint').style.display='none';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAIN ANALYSIS
+// ─────────────────────────────────────────────────────────────
+async function runAnalysis(){
+  const lic = document.getElementById('sel-lic').value;
+  const fy = document.getElementById('sel-fy').value;
+  if(!lic){alert('Please select a distribution licensee.');return;}
+  STATE.licensee = lic==='Other' ? document.getElementById('other-lic').value.trim() : lic;
+  STATE.fy = fy;
+  STATE.aicpi = parseFloat(document.getElementById('aicpi').value)||4.2;
+  STATE.sbiRate = parseFloat(document.getElementById('sbi-rate').value)||6.5;
+
+  document.getElementById('progress-card').style.display='block';
+  document.getElementById('btn-run').disabled=true;
+  const log = document.getElementById('log-box');
+  log.innerHTML='';
+
+  function addLog(txt, cls=''){
+    const d=document.createElement('div');
+    d.className='ll'+(cls?' '+cls:'');
+    d.textContent='> '+txt;
+    log.appendChild(d);
+    log.scrollTop=log.scrollHeight;
+  }
+  function setProgress(pct,lbl){
+    document.getElementById('pbar').style.width=pct+'%';
+    document.getElementById('prog-pct').textContent=pct+'%';
+    document.getElementById('prog-lbl').textContent=lbl;
+  }
+
+  try{
+    setProgress(5,'Preparing documents for AI extraction...');
+    addLog('Session: '+STATE.licensee+' · FY '+STATE.fy);
+    addLog('Documents loaded: '+STATE.filesData.filter(f=>f!==null).length);
+    addLog('AICPI rate: '+STATE.aicpi+'% · SBI rate: '+STATE.sbiRate+'%');
+
+    setProgress(15,'Sending documents to AI for data extraction...');
+    addLog('Calling Claude AI — extracting financial data from all uploaded documents...');
+
+    // Build the extraction prompt
+    const docList = STATE.filesData.filter(f=>f!==null);
+    const docNames = ['Annual Accounts','ARR Order','Previous Truing-Up Order','Tariff Schedule/Energy Audit'];
+    const uploadedNames = docList.map((d,i)=>docNames[STATE.filesData.indexOf(d)]||d.name).join(', ');
+
+    addLog('Documents: '+uploadedNames,'hi');
+
+    const extractionResult = await callClaudeExtraction(docList, STATE.licensee, STATE.fy);
+
+    setProgress(55,'Data extraction complete. Applying KSERC regulatory rules...');
+    addLog('Extraction complete.','ok');
+    addLog('Raw data received from AI. Parsing...','hi');
+
+    let extracted;
+    try{
+      const clean = extractionResult.replace(/```json|```/g,'').trim();
+      extracted = JSON.parse(clean);
+    } catch(e){
+      addLog('JSON parse error — attempting recovery...','warn');
+      // Try to extract JSON from within the text
+      const match = extractionResult.match(/\{[\s\S]*\}/);
+      if(match){
+        try{ extracted = JSON.parse(match[0]); }
+        catch(e2){ throw new Error('Could not parse AI response. The documents may be scanned images or unreadable. Please try a text-based PDF.'); }
+      } else { throw new Error('AI did not return structured data. Please try again.'); }
+    }
+
+    STATE.extraction = extracted;
+    addLog('Parsed: '+JSON.stringify(Object.keys(extracted)),'ok');
+
+    setProgress(70,'Applying perennial rejection rules...');
+    addLog('Checking for perennial rejections (Section 3(1) duty, CSR, RPO)...');
+
+    // Apply rules
+    const results = applyRegulatoryRules(extracted, STATE.aicpi, STATE.sbiRate);
+    STATE.lineItems = results.lineItems;
+    STATE.computedGap = results.gap;
+    STATE.manualNeeded = results.manualNeeded;
+
+    addLog('Perennial rejections applied: '+(results.rejections.join(', ')||'none found'),'ok');
+    setProgress(85,'Computing Revenue Gap / Surplus...');
+    addLog('Revenue Gap computation: '+JSON.stringify(results.gapCalc),'hi');
+
+    setProgress(95,'Generating reasoning for each line item...');
+    addLog('Building AI reasoning chains...','ok');
+
+    setProgress(100,'Analysis complete. Redirecting to results...');
+    addLog('Analysis complete ✓','ok');
+    document.getElementById('prog-status-badge').textContent='Complete';
+    document.getElementById('prog-status-badge').className='badge bg';
+
+    setTimeout(()=>{
+      buildResultsView();
+      go('results');
+    }, 800);
+
+  } catch(err){
+    addLog('ERROR: '+err.message,'warn');
+    document.getElementById('prog-status-badge').textContent='Error';
+    document.getElementById('prog-status-badge').className='badge br';
+    setProgress(0,'Analysis failed.');
+    document.getElementById('btn-run').disabled=false;
+    alert('Analysis failed: '+err.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// CLAUDE API CALL — DOCUMENT EXTRACTION
+// ─────────────────────────────────────────────────────────────
+async function callClaudeExtraction(docList, licensee, fy){
+  const SYSTEM_PROMPT = `You are KSERC-Analyst, a regulatory auditor for the Kerala State Electricity Regulatory Commission (KSERC). You are extracting financial data from official electricity distribution licensee documents.
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL financial figures you can find in the documents. Do NOT hallucinate or assume values.
+2. If a value is not found in the documents, return null for that field — do NOT guess.
+3. All monetary values MUST be in ₹ Lakh (Indian Lakhs). If values are in Crores, multiply by 100. If in Rupees, divide by 100000.
+4. Indian number format: "12,34,567" = 1234567. Parse this correctly.
+5. Look for tables labeled: Revenue, ARR, Cost, Employee, R&M, O&M, Depreciation, Interest, Power Purchase, Energy, Distribution Loss, AT&C.
+6. Return ONLY valid JSON. No markdown, no explanation text before or after the JSON.
+
+Extract and return this exact JSON structure:
+{
+  "approved_arr_lakhs": <number or null>,
+  "actual_revenue_lakhs": <number or null>,
+  "non_tariff_income_lakhs": <number or null>,
+  "energy_input_mu": <number or null>,
+  "energy_sold_mu": <number or null>,
+  "atc_target_pct": <number or null>,
+  "power_purchase_cost_lakhs": <number or null>,
+  "power_purchase_cost_per_unit": <number or null>,
+  "line_items": [
+    {
+      "name": "<exact name from document>",
+      "category": "<one of: om_cost|power_purchase|depreciation|finance|tax|other>",
+      "claimed_amount_lakhs": <number or null>,
+      "prev_approved_lakhs": <number or null>
+    }
+  ],
+  "prev_year_om_approved_lakhs": <number or null>,
+  "extraction_notes": "<brief note about what was found and any issues>"
+}`;
+
+  // Build messages with document content
+  const content = [];
+
+  // Add each document
+  docList.forEach((doc, i) => {
+    if(doc && doc.data){
+      const mediaType = doc.type && doc.type.includes('pdf') ? 'application/pdf' :
+                        doc.name && doc.name.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+                        'application/pdf';
+      // Only PDFs can be sent as documents to Claude
+      if(doc.type === 'application/pdf' || (doc.name && doc.name.toLowerCase().endsWith('.pdf'))){
+        content.push({
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: doc.data }
+        });
+      }
+    }
+  });
+
+  content.push({
+    type: "text",
+    text: `These are official documents for ${licensee} for Financial Year ${fy}. 
+    
+Extract all financial data from ALL uploaded documents and return the JSON structure specified. 
+Focus especially on:
+- The Approved ARR (Aggregate Revenue Requirement) from the ARR Order
+- Actual revenue collected (from Annual Accounts)
+- All line items with claimed amounts (Employee Cost, R&M, A&G, Depreciation, Interest, Power Purchase, Section 3(1) Duty if any, CSR if any, RPO if any)
+- Energy input (MU) and energy sold/billed (MU) for AT&C loss calculation
+- Previous year approved amounts for O&M normative cap calculation
+
+Return ONLY the JSON. No other text.`
+  });
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: content }]
+    })
+  });
+
+  if(!response.ok){
+    const err = await response.json();
+    throw new Error('Claude API error: '+(err.error?.message||response.status));
+  }
+
+  const data = await response.json();
+  return data.content?.[0]?.text || '{}';
+}
+
+// ─────────────────────────────────────────────────────────────
+// KSERC REGULATORY RULES ENGINE — ALL FORMULAS
+// ─────────────────────────────────────────────────────────────
+function applyRegulatoryRules(extracted, aicpi, sbiRate){
+  const manualNeeded = {};
+  const rejections = [];
+  const lineItems = [];
+
+  // ── 1. Perennial Rejections Patterns ────────────────────────
+  const PERENNIAL = [
+    {
+      patterns: ['section 3(1)','section 3 (1)','electricity duty u/s','3(1) duty','sec 3(1)','section 3','electricity duty'],
+      name: 'Section 3(1) Electricity Duty',
+      reason: 'Section 3(1) Electricity Duty is not allowable in ARR computation. Consistently rejected in all KSERC truing-up orders.',
+      ref: 'Kerala Electricity Duty Act; consistent KSERC precedent'
+    },
+    {
+      patterns: ['csr','corporate social responsibility','community development fund'],
+      name: 'CSR Expense',
+      reason: 'CSR is an appropriation of profit under Companies Act 2013, Section 135. Not a cost of electricity distribution.',
+      ref: 'Companies Act 2013, Section 135; KSERC Order KPUPL 2023-24'
+    },
+    {
+      patterns: ['rpo provision','rpo liability','renewable purchase obligation provision','rpo'],
+      name: 'RPO Provision',
+      reason: 'Only actual REC payments are allowable. Provisions for RPO liability are rejected.',
+      ref: 'KSERC Renewable Purchase Obligation Regulations'
+    }
+  ];
+
+  // ── 2. Process line items from extraction ───────────────────
+  const rawItems = extracted.line_items || [];
+
+  rawItems.forEach(item => {
+    if(!item.name || item.claimed_amount_lakhs === undefined) return;
+
+    const nameLower = (item.name || '').toLowerCase();
+    let status = 'approved';
+    let rec = item.claimed_amount_lakhs;
+    let cap = null;
+    let disallowed = 0;
+    let reaKey = 'generic';
+    let rejection_reason = '';
+    let ref = '';
+
+    // Check perennial rejections
+    let isPeren = false;
+    for(const p of PERENNIAL){
+      if(p.patterns.some(pat => nameLower.includes(pat))){
+        isPeren = true;
+        rec = 0;
+        cap = 0;
+        disallowed = item.claimed_amount_lakhs || 0;
+        status = 'rejected';
+        rejection_reason = p.reason;
+        ref = p.ref;
+        reaKey = 'perennial';
+        if(item.claimed_amount_lakhs > 0) rejections.push(item.name);
+        break;
+      }
+    }
+
+    // O&M Normative Cap for controllable costs
+    if(!isPeren && item.category === 'om_cost'){
+      const prevApproved = item.prev_approved_lakhs || extracted.prev_year_om_approved_lakhs;
+      if(prevApproved && item.claimed_amount_lakhs !== null){
+        cap = parseFloat((prevApproved * (1 + aicpi/100)).toFixed(4));
+        if(item.claimed_amount_lakhs > cap){
+          disallowed = parseFloat((item.claimed_amount_lakhs - cap).toFixed(4));
+          rec = cap;
+          status = 'flagged';
+          rejection_reason = `Claimed ₹${item.claimed_amount_lakhs}L exceeds normative cap ₹${cap}L (Prev.Approved ₹${prevApproved}L × (1+${aicpi}%) = ₹${cap}L). Excess of ₹${disallowed}L disallowed.`;
+          ref = 'KSERC Tariff Regulations 2021, Regulation 12(3)';
+          reaKey = 'om_cap';
+        } else {
+          status = 'approved';
+          ref = 'KSERC Tariff Regulations 2021, Regulation 12(3) — within normative limit';
+          reaKey = 'om_ok';
+        }
+      }
+    }
+
+    // Handle null claimed
+    if(item.claimed_amount_lakhs === null){
+      manualNeeded[item.name] = {type:'claimed', hint:`Enter claimed amount for "${item.name}" from the Annual Accounts (₹ Lakh)`};
+      status = 'pending_review';
+    }
+
+    lineItems.push({
+      name: item.name,
+      category: item.category || 'other',
+      claimed: item.claimed_amount_lakhs,
+      cap: cap,
+      rec: rec,
+      staff: null,
+      disallowed: disallowed,
+      status: status,
+      rejection_reason: rejection_reason,
+      ref: ref,
+      reaKey: reaKey,
+      rawItem: item
+    });
+  });
+
+  // ── 3. Revenue Gap Computation ───────────────────────────────
+  let approvedARR = extracted.approved_arr_lakhs;
+  let actualRevenue = extracted.actual_revenue_lakhs;
+  let nti = extracted.non_tariff_income_lakhs || 0;
+
+  if(approvedARR === null || approvedARR === undefined) manualNeeded['approved_arr'] = {type:'core', hint:'Enter Approved ARR (₹ Lakh) from the ARR Order'};
+  if(actualRevenue === null || actualRevenue === undefined) manualNeeded['actual_revenue'] = {type:'core', hint:'Enter Actual Revenue Collected (₹ Lakh) from Annual Accounts'};
+
+  let gap = null, gapCalc = {};
+  if(approvedARR !== null && approvedARR !== undefined && actualRevenue !== null && actualRevenue !== undefined){
+    const netARR = approvedARR - nti;
+    gap = parseFloat((netARR - actualRevenue).toFixed(4));
+    gapCalc = { approvedARR, nti, netARR, actualRevenue, gap };
+  }
+
+  // ── 4. AT&C Loss ─────────────────────────────────────────────
+  let atcResult = null;
+  if(extracted.energy_input_mu && extracted.energy_sold_mu){
+    const input = extracted.energy_input_mu;
+    const sold = extracted.energy_sold_mu;
+    const target = extracted.atc_target_pct;
+    const actualLoss = ((input - sold) / input) * 100;
+    const gainAchieved = target ? actualLoss < target : null;
+    let licenseeShare = 0;
+    if(gainAchieved && extracted.power_purchase_cost_per_unit){
+      const gainMU = ((target - actualLoss) / 100) * input;
+      const savingsLakhs = (gainMU * 1e6 * extracted.power_purchase_cost_per_unit) / 1e5;
+      licenseeShare = parseFloat(((2/3) * savingsLakhs).toFixed(4));
+    }
+    atcResult = { input, sold, target, actualLoss: parseFloat(actualLoss.toFixed(4)), gainAchieved, licenseeShare };
+  }
+
+  // ── 5. Anomaly Check ─────────────────────────────────────────
+  let anomaly = null;
+  if(gap !== null){
+    if(gap > 64.72) anomaly = `ANOMALY: Computed Revenue Gap of ₹${gap.toFixed(2)}L exceeds the maximum ever approved (₹64.72L, Infopark 2024-25). This requires manual verification before proceeding.`;
+    if(gap < -280.42) anomaly = `ANOMALY: Computed Revenue Surplus of ₹${Math.abs(gap).toFixed(2)}L exceeds the maximum ever approved (₹280.42L, Technopark 2020-21). This requires manual verification before proceeding.`;
+  }
+
+  return { lineItems, gap, gapCalc, rejections, manualNeeded, atcResult, anomaly, extracted };
+}
+
+// ─────────────────────────────────────────────────────────────
+// BUILD RESULTS VIEW
+// ─────────────────────────────────────────────────────────────
+function buildResultsView(){
+  const results = applyRegulatoryRules(STATE.extraction, STATE.aicpi, STATE.sbiRate);
+  STATE.lineItems = results.lineItems;
+  STATE.computedGap = results.gap;
+  STATE.manualNeeded = results.manualNeeded;
+
+  // Subtitle
+  document.getElementById('res-subtitle').textContent = STATE.licensee + ' · FY ' + STATE.fy;
+  document.getElementById('li-subtitle').textContent = STATE.licensee + ' · FY ' + STATE.fy;
+
+  // Anomaly
+  if(results.anomaly){
+    document.getElementById('anomaly-alert').style.display='flex';
+    document.getElementById('anomaly-text').innerHTML='<b>ANOMALY DETECTED:</b> '+results.anomaly;
+  } else {
+    document.getElementById('anomaly-alert').style.display='none';
+  }
+
+  // Manual entry needed
+  const hasManual = Object.keys(results.manualNeeded).length > 0;
+  document.getElementById('manual-alert').style.display = hasManual ? 'flex' : 'none';
+  document.getElementById('manual-card').style.display = hasManual ? 'block' : 'none';
+  if(hasManual){
+    const mf = document.getElementById('manual-fields');
+    mf.innerHTML = Object.entries(results.manualNeeded).map(([k,v])=>`
+      <div class="manual-field">
+        <div class="mf-lbl">${k.replace(/_/g,' ').toUpperCase()} — NOT FOUND IN DOCUMENTS</div>
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">${v.hint}</div>
+        <input type="number" step="0.01" id="mf-${k}" placeholder="Enter value in ₹ Lakh...">
+      </div>`).join('');
+  }
+
+  // Perennial rejections box
+  const rejItems = results.lineItems.filter(i=>i.status==='rejected');
+  if(rejItems.length > 0){
+    document.getElementById('rej-box').style.display='block';
+    document.getElementById('rej-items').innerHTML = rejItems.map(i=>`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div><div style="font-weight:500;font-size:13.5px">${i.name}</div><div style="font-size:11.5px;color:var(--muted);font-style:italic;margin-top:2px">${i.rejection_reason}</div></div>
+        <div style="text-align:right;flex-shrink:0"><span style="font-family:'Source Code Pro',monospace;font-size:12px;font-weight:700;color:var(--red);background:var(--rbg);padding:2px 7px;border-radius:3px">₹ 0.00 L</span><div style="font-size:11px;color:var(--muted);margin-top:3px">Claimed: ₹ ${(i.claimed||0).toFixed(2)} L</div></div>
+      </div>`).join('');
+  } else {
+    document.getElementById('rej-box').style.display='none';
+  }
+
+  // KPIs
+  const gap = results.gap;
+  const totalClaimed = results.lineItems.reduce((s,i)=>s+(i.claimed||0),0);
+  const totalDis = results.lineItems.reduce((s,i)=>s+(i.disallowed||0),0);
+  const gapEl = document.getElementById('kpi-gap');
+  if(gap !== null){
+    const isGap = gap > 0;
+    gapEl.className = 'kpi-val '+(isGap?'kv-r':'kv-g');
+    gapEl.textContent = (isGap?'₹ ':'−₹ ')+Math.abs(gap).toFixed(2)+' L';
+    document.getElementById('kpi-gap-sub').textContent = isGap ? 'Revenue GAP (licensee owed)' : 'Revenue SURPLUS (excess collected)';
+    document.querySelector('.kpi.kred').className = 'kpi '+(isGap?'kred':'kgrn');
+  } else {
+    gapEl.textContent='NOT FOUND';
+    gapEl.className='kpi-val kv-a';
+    document.getElementById('kpi-gap-sub').textContent='Enter required values manually';
+  }
+  document.getElementById('kpi-claimed').textContent = totalClaimed > 0 ? '₹ '+totalClaimed.toFixed(2)+' L' : 'From documents';
+  document.getElementById('kpi-disallowed').textContent = '₹ '+totalDis.toFixed(2)+' L';
+
+  // AT&C
+  if(results.atcResult){
+    document.getElementById('atc-card').style.display='block';
+    const atc = results.atcResult;
+    document.getElementById('kpi-atc').textContent = atc.actualLoss.toFixed(2)+'%';
+    document.getElementById('kpi-atc-sub').textContent = atc.target ? `Target: ${atc.target}% · ${atc.gainAchieved?'Efficiency gain ✓':'Below target'}` : 'No target found in docs';
+    document.getElementById('atc-badge').textContent = atc.gainAchieved ? 'Efficiency Gain ✓' : atc.gainAchieved===false ? 'Below Target' : 'Computed';
+    document.getElementById('atc-badge').className = 'badge '+(atc.gainAchieved?'bg':atc.gainAchieved===false?'br':'bb');
+    document.getElementById('atc-grid').innerHTML = [
+      ['Energy Input', atc.input+' MU'],['Energy Sold', atc.sold+' MU'],
+      ['Actual AT&C Loss', atc.actualLoss.toFixed(2)+'%'],
+      ['Approved Target', atc.target ? atc.target+'%' : 'Not found']
+    ].map(([l,v])=>`<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-bottom:2px">${l}</div><div style="font-family:'Source Code Pro',monospace;font-size:13.5px;font-weight:600">${v}</div></div>`).join('');
+    document.getElementById('atc-note').textContent = atc.gainAchieved && atc.licenseeShare > 0 ? `Efficiency gain: Licensee retains 2/3 of power purchase savings = ₹${atc.licenseeShare.toFixed(2)}L (credited per 2/3 Rule, KSERC Tariff Regs 2021)` : 'AT&C Loss = ((Input − Sold) / Input) × 100';
+  } else {
+    document.getElementById('atc-card').style.display='none';
+    document.getElementById('kpi-atc').textContent='—';
+    document.getElementById('kpi-atc-sub').textContent='Energy data not found';
+  }
+
+  // Revenue Gap Computation Table
+  const ex = results.extracted||STATE.extraction;
+  const arr = ex.approved_arr_lakhs;
+  const nti = ex.non_tariff_income_lakhs||0;
+  const netARR = arr !== null ? arr - nti : null;
+  const actual = ex.actual_revenue_lakhs;
+  document.getElementById('ct-arr').textContent = arr !== null ? arr.toFixed(2) : 'NOT FOUND — enter manually';
+  document.getElementById('ct-nti').textContent = nti > 0 ? '− '+nti.toFixed(2) : '0.00';
+  document.getElementById('ct-net-arr').textContent = netARR !== null ? netARR.toFixed(2) : '—';
+  document.getElementById('ct-actual').textContent = actual !== null ? actual.toFixed(2) : 'NOT FOUND — enter manually';
+  if(gap !== null){
+    document.getElementById('ct-gap').textContent = gap.toFixed(2);
+    document.getElementById('ct-gap').style.color = gap > 0 ? 'var(--red)' : 'var(--grn)';
+    const ob = document.getElementById('outcome-block');
+    ob.className = 'outcome '+(gap <= 0 ? 'sur' : '');
+    document.getElementById('outcome-lbl').textContent = gap > 0 ? 'REVENUE GAP' : 'REVENUE SURPLUS';
+    document.getElementById('outcome-val').textContent = (gap > 0 ? '₹ ' : '−₹ ')+Math.abs(gap).toFixed(2)+' L';
+  } else {
+    document.getElementById('ct-gap').textContent = '—';
+    document.getElementById('outcome-val').textContent = '—';
+    document.getElementById('outcome-lbl').textContent = 'NOT COMPUTED';
+  }
+
+  // Line Items Table
+  const tbody = document.getElementById('li-tbody');
+  const approved = results.lineItems.filter(i=>i.status==='approved').length;
+  const flagged = results.lineItems.filter(i=>i.status==='flagged').length;
+  const rejected = results.lineItems.filter(i=>i.status==='rejected').length;
+  tbody.innerHTML = results.lineItems.map((item,idx)=>{
+    const rc = item.status==='flagged'?' class="fl"':item.status==='rejected'?' class="rj"':'';
+    const badge = item.status==='approved'?'<span class="badge bg">✓ Approved</span>':item.status==='flagged'?'<span class="badge ba">⚠ Flagged</span>':item.status==='rejected'?'<span class="badge br">✗ Rejected</span>':'<span class="badge bgr">Pending</span>';
+    const dis = item.disallowed > 0 ? item.disallowed.toFixed(2) : '—';
+    const capStr = item.cap === null ? '—' : item.cap === 0 ? '<span style="color:var(--red)">0.00</span>' : item.cap.toFixed(2);
+    const recStr = item.rec === null ? '<span style="color:var(--amb)">MANUAL</span>' : '<span style="color:'+(item.status==='rejected'?'var(--red)':item.status==='flagged'?'var(--amb)':'var(--grn)')+'">'+item.rec.toFixed(2)+'</span>';
+    const claimedStr = item.claimed === null ? '<span style="color:var(--amb)">NOT FOUND</span>' : item.claimed.toFixed(2);
+    return `<tr${rc}>
+      <td><div style="font-weight:500">${item.name}</div><div style="font-size:11px;color:var(--muted);margin-top:1px">${item.category||'—'}</div></td>
+      <td class="nr">${claimedStr}</td>
+      <td class="nr">${capStr}</td>
+      <td class="nr">${recStr}</td>
+      <td class="nr" style="color:var(--red);font-weight:600">${dis}</td>
+      <td>${badge}</td>
+      <td>
+        <a style="font-size:12px;color:var(--blue);cursor:pointer;font-weight:500;display:block" onclick="showReas(${idx})">View Reasoning</a>
+        ${item.status==='flagged'?`<a style="font-size:12px;color:var(--amb);cursor:pointer;font-weight:500;display:block;margin-top:2px" onclick="showOv(${idx})">Override</a><div class="ov-box" id="ov-${idx}"><label style="font-size:11.5px;color:var(--tx2);display:block;margin-bottom:4px">Override Amount (₹ Lakh):</label><div style="display:flex;gap:6px"><input type="number" step="0.01" placeholder="${item.rec}" id="ov-val-${idx}" style="width:110px;padding:5px 8px;font-size:13px;border:1px solid var(--bdr);border-radius:4px;font-family:'Source Code Pro',monospace"><button class="btn bp xs" onclick="saveOv(${idx})">Save</button><button class="btn xs" style="background:#f1f5f9;color:var(--tx2)" onclick="closeOv(${idx})">Cancel</button></div><textarea id="ov-note-${idx}" style="font-size:12px;margin-top:6px;width:100%;border:1px solid var(--bdr);border-radius:4px;padding:5px 8px;font-family:'Noto Sans',sans-serif;resize:none;min-height:45px" placeholder="Reason for override (required)..."></textarea></div>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('li-summary').textContent = `${results.lineItems.length} items · ${approved} approved · ${flagged} flagged · ${rejected} rejected`;
+  document.getElementById('li-total-dis').textContent = 'Total Disallowed: ₹ '+totalDis.toFixed(2)+' L';
+}
+
+// ─────────────────────────────────────────────────────────────
+// RECALCULATE WITH MANUAL VALUES
+// ─────────────────────────────────────────────────────────────
+function recalculate(){
+  const ex = STATE.extraction;
+  Object.keys(STATE.manualNeeded).forEach(k => {
+    const val = parseFloat(document.getElementById('mf-'+k)?.value);
+    if(!isNaN(val)){
+      if(k==='approved_arr') ex.approved_arr_lakhs = val;
+      else if(k==='actual_revenue') ex.actual_revenue_lakhs = val;
+      else {
+        // Try to find and update line item
+        const item = ex.line_items?.find(i=>i.name===k);
+        if(item) item.claimed_amount_lakhs = val;
+      }
+    }
+  });
+  STATE.extraction = ex;
+  buildResultsView();
+  document.getElementById('manual-card').style.display='none';
+  document.getElementById('manual-alert').style.display='none';
+}
+
+// ─────────────────────────────────────────────────────────────
+// REASONING PANEL
+// ─────────────────────────────────────────────────────────────
+function showReas(idx){
+  const item = STATE.lineItems[idx];
+  if(!item) return;
+  document.getElementById('rp-title').textContent = 'AI Reasoning — '+item.name;
+  let html = '';
+  // Step 1: Item info
+  html += step(1,'Line Item Details',`<div class="rs-t">Name: <b>${item.name}</b> &nbsp;·&nbsp; Category: <b>${item.category||'—'}</b><br>Claimed: <b>₹${item.claimed!==null?item.claimed.toFixed(2):'NOT FOUND'} L</b></div>`);
+  // Step 2: Rule applied
+  if(item.status === 'rejected'){
+    html += step(2,'Perennial Rejection Applied',`<div class="rs-t">${item.rejection_reason}</div><div class="rs-d">${item.ref}</div>`);
+    html += step(3,'Decision',`<div class="rs-d">Claimed: ₹${(item.claimed||0).toFixed(2)}L &nbsp;·&nbsp; Approved: ₹0.00L &nbsp;·&nbsp; Fully Disallowed — No exceptions</div>`);
+  } else if(item.status === 'flagged' && item.reaKey==='om_cap'){
+    html += step(2,'Regulation Lookup',`<div class="rs-t">KSERC Tariff Regulations 2021, Regulation 12(3): O&M costs (Employee Cost, R&M, A&G) are capped at the previous year's approved amount escalated by the AICPI index.</div><div class="rs-c">📎 ${item.ref}</div>`);
+    html += step(3,'Normative Cap Calculation',`<div class="rs-f">Normative Cap = Prev.Approved × (1 + AICPI)\n= ₹${item.rawItem.prev_approved_lakhs?.toFixed(2)||'prev'} L × (1 + ${STATE.aicpi/100})\n= ₹${item.cap?.toFixed(4)} L</div>`);
+    html += step(4,'Decision',`<div class="rs-d">Claimed: ₹${item.claimed?.toFixed(2)}L &nbsp;·&nbsp; Cap: ₹${item.cap?.toFixed(2)}L &nbsp;·&nbsp; Excess ₹${item.disallowed?.toFixed(2)}L DISALLOWED</div>`);
+  } else if(item.status === 'approved'){
+    html += step(2,'Validation',`<div class="rs-t">${item.ref || 'Item reviewed and found within approved limits.'}</div>`);
+    html += step(3,'Decision',`<div class="rs-d ok">Claimed: ₹${item.claimed?.toFixed(2)||'—'}L &nbsp;·&nbsp; Approved in full: ₹${item.rec?.toFixed(2)||'—'}L</div>`);
+  } else {
+    html += step(2,'Status',`<div class="rs-t">Status: ${item.status}. ${item.rejection_reason||'Review required.'}</div>`);
+  }
+  document.getElementById('rp-body').innerHTML = html;
+  document.getElementById('reas-panel').className='rp show fade';
+  document.getElementById('reas-panel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function step(n,lbl,content){
+  return `<div class="rs"><div class="rs-n">${n}</div><div><div class="rs-l">${lbl}</div>${content}</div></div>`;
+}
+function closeReas(){document.getElementById('reas-panel').className='rp';}
+
+// Override
+function showOv(idx){document.getElementById('ov-'+idx)?.classList.add('show');}
+function closeOv(idx){document.getElementById('ov-'+idx)?.classList.remove('show');}
+function saveOv(idx){
+  const note = document.getElementById('ov-note-'+idx)?.value;
+  if(!note?.trim()){document.getElementById('ov-note-'+idx).style.border='1.5px solid var(--red)';return;}
+  const val = parseFloat(document.getElementById('ov-val-'+idx)?.value);
+  if(isNaN(val)){alert('Enter a valid amount.');return;}
+  STATE.lineItems[idx].staff = val;
+  STATE.lineItems[idx].status='approved';
+  closeOv(idx);
+  buildResultsView();
+  alert('Override recorded. Audit log entry created.');
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI CHAT
+// ─────────────────────────────────────────────────────────────
+async function sendAI(){
+  const inp = document.getElementById('ai-inp');
+  const q = inp.value.trim();
+  if(!q) return;
+  inp.value='';
+  const msgs = document.getElementById('ai-msgs');
+  const btn = document.getElementById('ai-btn');
+  msgs.innerHTML += `<div class="ai-msg usr"><div class="ai-lbl">You</div>${q}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  btn.disabled=true; btn.textContent='...';
+  const thinking = document.createElement('div');
+  thinking.className='ai-msg bot'; thinking.id='ai-think';
+  thinking.innerHTML='<div class="ai-lbl">KSERC-Analyst</div><span style="color:var(--muted)">Analysing...</span>';
+  msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
+
+  try{
+    const ex = STATE.extraction || {};
+    const context = `Licensee: ${STATE.licensee}, FY: ${STATE.fy}. 
+Approved ARR: ₹${ex.approved_arr_lakhs||'unknown'}L. 
+Actual Revenue: ₹${ex.actual_revenue_lakhs||'unknown'}L. 
+Computed Gap: ${STATE.computedGap!==null?'₹'+STATE.computedGap.toFixed(2)+'L':'not computed'}.
+AICPI rate used: ${STATE.aicpi}%.
+Line items: ${STATE.lineItems.map(i=>i.name+' (claimed:'+i.claimed+'L, rec:'+i.rec+'L, status:'+i.status+')').join('; ')}.
+Extraction notes: ${ex.extraction_notes||'none'}.`;
+
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:600,
+        system:`You are KSERC-Analyst, a senior regulatory auditor for the Kerala State Electricity Regulatory Commission (KSERC), Kerala. You assist with truing-up analysis of electricity distribution licensees. Respond formally, concisely. Use ₹ Lakh. Cite KSERC regulations when relevant. Current analysis context: ${context}`,
+        messages:[{role:"user",content:q}]
+      })
+    });
+    const data = await res.json();
+    document.getElementById('ai-think').innerHTML=`<div class="ai-lbl">KSERC-Analyst</div>${data.content?.[0]?.text||'No response.'}`;
+  } catch(e){
+    document.getElementById('ai-think').innerHTML=`<div class="ai-lbl">KSERC-Analyst</div><span style="color:var(--muted)">API unavailable. Check console for error.</span>`;
+  }
+  btn.disabled=false; btn.textContent='Ask';
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ─────────────────────────────────────────────────────────────
+// REPORT PREPARATION
+// ─────────────────────────────────────────────────────────────
+function prepareReport(){
+  const sub = document.getElementById('rpt-subtitle');
+  if(!STATE.extraction){
+    document.getElementById('no-results-warn').style.display='flex';
+    document.getElementById('report-ready-section').style.display='none';
+    return;
+  }
+  document.getElementById('no-results-warn').style.display='none';
+  document.getElementById('report-ready-section').style.display='block';
+  sub.textContent = STATE.licensee + ' · FY ' + STATE.fy;
+
+  const gap = STATE.computedGap;
+  const items = STATE.lineItems;
+  const approved = items.filter(i=>i.status==='approved').length;
+  const flagged = items.filter(i=>i.status==='flagged').length;
+  const rejected = items.filter(i=>i.status==='rejected').length;
+  const totalDis = items.reduce((s,i)=>s+(i.disallowed||0),0);
+
+  document.getElementById('rpt-checklist').innerHTML = [
+    ['Approved ARR from documents', STATE.extraction?.approved_arr_lakhs !== null ? 'bg' : 'br'],
+    ['Actual Revenue from documents', STATE.extraction?.actual_revenue_lakhs !== null ? 'bg' : 'br'],
+    ['Revenue Gap / Surplus computed', gap !== null ? 'bg' : 'ba'],
+    ['Line items validated ('+items.length+')', 'bg'],
+    ['Perennial rejections applied ('+rejected+')', 'bg'],
+    ['Flagged items: '+flagged, flagged>0?'ba':'bg'],
+  ].map(([lbl,cls])=>`<div style="display:flex;align-items:center;gap:8px"><span style="color:${cls==='bg'?'var(--grn)':cls==='br'?'var(--red)':'var(--amb)'};font-size:15px">${cls==='bg'?'✓':cls==='br'?'✗':'⚠'}</span>${lbl}</div>`).join('');
+
+  document.getElementById('rpt-summary').innerHTML = [
+    ['Licensee', STATE.licensee],
+    ['Financial Year', STATE.fy],
+    ['Approved ARR', STATE.extraction?.approved_arr_lakhs !== null ? '₹'+STATE.extraction.approved_arr_lakhs.toFixed(2)+'L' : 'NOT FOUND'],
+    ['Actual Revenue', STATE.extraction?.actual_revenue_lakhs !== null ? '₹'+STATE.extraction.actual_revenue_lakhs.toFixed(2)+'L' : 'NOT FOUND'],
+    ['Revenue Gap', gap !== null ? '₹'+Math.abs(gap).toFixed(2)+'L ('+(gap>0?'GAP':'SURPLUS')+')' : '—'],
+    ['Total Disallowed', '₹'+totalDis.toFixed(2)+'L'],
+  ].map(([l,v])=>`<div><span style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;display:block">${l}</span><span style="font-weight:500">${v}</span></div>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────
+// PDF GENERATION — REAL DATA
+// ─────────────────────────────────────────────────────────────
+function generatePDF(){
+  if(!STATE.extraction || !STATE.lineItems.length){
+    alert('No analysis results. Please run an analysis first.');return;
+  }
+  document.getElementById('pdf-status').textContent = 'Generating PDF...';
+
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const PAGE_W = 210, MARGIN = 20;
+    const TEXT_W = PAGE_W - MARGIN*2;
+    let y = 20;
+
+    function checkPage(needed=20){
+      if(y + needed > 280){ doc.addPage(); y = 20; }
+    }
+    function line(text, x, yy, opts={}){
+      doc.text(text, x, yy, opts);
+    }
+
+    // ── KSERC HEADER ──────────────────────────────────────────
+    doc.setFontSize(10);
+    doc.setFont('helvetica','bold');
+    doc.text('KERALA STATE ELECTRICITY REGULATORY COMMISSION', PAGE_W/2, y, {align:'center'});
+    y+=5;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8.5);
+    doc.text('KPFC Bhavanam, C.V. Raman Pillai Road, Vellayambalam, Thiruvananthapuram – 695 010', PAGE_W/2, y, {align:'center'});
+    y+=4;
+    doc.text('Phone: 0471 273 5544  |  E-mail: kserc@erckerala.org  |  Website: www.erckerala.org', PAGE_W/2, y, {align:'center'});
+    y+=5;
+    doc.setLineWidth(0.6);
+    doc.line(MARGIN, y, PAGE_W-MARGIN, y);
+    y+=3;
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, y, PAGE_W-MARGIN, y);
+    y+=8;
+
+    // ── ORDER TITLE ───────────────────────────────────────────
+    doc.setFontSize(14);
+    doc.setFont('helvetica','bold');
+    doc.text('ORDER', PAGE_W/2, y, {align:'center'});
+    y+=1;
+    const titleW = doc.getTextWidth('ORDER');
+    doc.setLineWidth(0.5);
+    doc.line(PAGE_W/2 - titleW/2, y+1, PAGE_W/2 + titleW/2, y+1);
+    y+=9;
+
+    // ── HEADER INFO ───────────────────────────────────────────
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    const prepBy = document.getElementById('rpt-by').value || 'Prakhar Sharma, B.Tech, RIET Kerala';
+    const rptDate = document.getElementById('rpt-date').value || new Date().toISOString().split('T')[0];
+    const dateFormatted = new Date(rptDate).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+    doc.text('Prepared by: '+prepBy, MARGIN, y);
+    doc.text('Date: '+dateFormatted, PAGE_W-MARGIN, y, {align:'right'});
+    y+=5;
+    doc.text('Licensee: '+STATE.licensee, MARGIN, y);
+    doc.text('Financial Year: '+STATE.fy, PAGE_W-MARGIN, y, {align:'right'});
+    y+=4;
+    doc.text('Work Order: KSERC/CSO/03-05 | Generated by: KSERC AI Truing-Up Tool (RIET ISR Project)', MARGIN, y);
+    y+=6;
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, PAGE_W-MARGIN, y);
+    y+=7;
+
+    // ── SECTION 1: BACKGROUND ─────────────────────────────────
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.text('1. Background', MARGIN, y);
+    y+=2;
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, MARGIN+30, y);
+    y+=5;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    const bgText = `${STATE.licensee}, a distribution licensee under the Kerala State Electricity Regulatory Commission (KSERC), filed a petition for truing up of accounts for the financial year ${STATE.fy}. This Order is issued pursuant to the analysis conducted under Work Order No. KSERC/CSO/03-05 dated 28th January 2026, using the AI-based Analytical Tool for Truing Up of Accounts developed by Rajadhani Institute of Engineering and Technology (RIET), Thiruvananthapuram, under the Commission's Institutional Social Responsibility (ISR) initiative. All financial data has been extracted directly from the documents submitted by the licensee and analyzed in accordance with the KSERC Tariff Regulations 2021 and relevant past orders.`;
+    const bgLines = doc.splitTextToSize(bgText, TEXT_W);
+    checkPage(bgLines.length * 4.5 + 10);
+    doc.text(bgLines, MARGIN, y);
+    y += bgLines.length * 4.5 + 7;
+
+    // ── SECTION 2: APPROVED ARR vs ACTUALS ───────────────────
+    checkPage(40);
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.text('2. Comparison of Approved ARR vs Actual Revenue', MARGIN, y);
+    y+=2; doc.setLineWidth(0.3); doc.line(MARGIN, y, MARGIN+75, y); y+=5;
+
+    const ex = STATE.extraction;
+    const nti = ex.non_tariff_income_lakhs || 0;
+    const netArr = ex.approved_arr_lakhs !== null ? ex.approved_arr_lakhs - nti : null;
+    const gap = STATE.computedGap;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Particulars','Amount (₹ Lakh)']],
+      body: [
+        ['Approved Aggregate Revenue Requirement (ARR)', ex.approved_arr_lakhs !== null ? ex.approved_arr_lakhs.toFixed(2) : 'NOT EXTRACTED'],
+        ['Less: Non-Tariff Income (NTI)', nti > 0 ? '('+nti.toFixed(2)+')' : '0.00'],
+        ['Net Approved ARR (after NTI)', netArr !== null ? netArr.toFixed(2) : '—'],
+        ['Actual Revenue Collected', ex.actual_revenue_lakhs !== null ? ex.actual_revenue_lakhs.toFixed(2) : 'NOT EXTRACTED'],
+        [gap !== null ? (gap > 0 ? 'Revenue Gap (Approved ARR > Actual Revenue)' : 'Revenue Surplus (Actual Revenue > Approved ARR)') : 'Revenue Gap / Surplus',
+         gap !== null ? (gap > 0 ? gap.toFixed(2) : '('+Math.abs(gap).toFixed(2)+') [Surplus]') : 'NOT COMPUTED'],
+      ],
+      styles:{fontSize:9,cellPadding:3},
+      headStyles:{fillColor:[26,53,87],textColor:255,fontStyle:'bold'},
+      columnStyles:{0:{cellWidth:130},1:{cellWidth:40,halign:'right',fontStyle:'bold'}},
+      margin:{left:MARGIN,right:MARGIN},
+      didParseCell(d){if(d.row.index===4&&d.column.index===1){d.cell.styles.textColor = gap>0?[192,57,43]:[26,127,75];}}
+    });
+    y = doc.lastAutoTable.finalY + 7;
+
+    // ── SECTION 3: LINE ITEM VALIDATION ──────────────────────
+    checkPage(40);
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.text('3. Line-Item Cost Validation', MARGIN, y);
+    y+=2; doc.setLineWidth(0.3); doc.line(MARGIN, y, MARGIN+50, y); y+=5;
+
+    const liRows = STATE.lineItems.map(item=>[
+      item.name,
+      item.claimed !== null ? item.claimed.toFixed(2) : 'N/F',
+      item.cap !== null && item.cap !== undefined ? item.cap.toFixed(2) : '—',
+      item.rec !== null ? item.rec.toFixed(2) : '—',
+      item.disallowed > 0 ? item.disallowed.toFixed(2) : '—',
+      item.status==='approved'?'Approved':item.status==='flagged'?'Approved (Reduced)':item.status==='rejected'?'Rejected':'Pending'
+    ]);
+
+    doc.autoTable({
+      startY: y,
+      head: [['Line Item','Claimed (₹L)','Cap (₹L)','Approved (₹L)','Disallowed','Status']],
+      body: liRows,
+      styles:{fontSize:8.5,cellPadding:2.5},
+      headStyles:{fillColor:[26,53,87],textColor:255,fontStyle:'bold',fontSize:8},
+      columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'center'}},
+      margin:{left:MARGIN,right:MARGIN},
+      didParseCell(d){
+        if(d.section==='body'&&d.row.index<STATE.lineItems.length){
+          const status = STATE.lineItems[d.row.index].status;
+          if(status==='rejected') d.cell.styles.textColor=[192,57,43];
+          else if(status==='flagged') d.cell.styles.textColor=[217,119,6];
+          else if(status==='approved') d.cell.styles.textColor=[26,127,75];
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 7;
+
+    // ── SECTION 4: AT&C LOSS ──────────────────────────────────
+    const results = applyRegulatoryRules(STATE.extraction, STATE.aicpi, STATE.sbiRate);
+    if(results.atcResult){
+      checkPage(40);
+      doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text('4. Distribution (AT&C) Loss Analysis', MARGIN, y);
+      y+=2; doc.line(MARGIN, y, MARGIN+58, y); y+=5;
+      const atc = results.atcResult;
+      doc.autoTable({
+        startY: y,
+        head:[['Parameter','Value']],
+        body:[
+          ['Energy Input (Purchased/Generated)', atc.input+' MU'],
+          ['Energy Sold / Billed', atc.sold+' MU'],
+          ['Actual AT&C Loss', atc.actualLoss.toFixed(2)+'%'],
+          ['Commission-Approved Target', atc.target ? atc.target+'%' : 'Not provided'],
+          ['Efficiency Gain Achieved', atc.gainAchieved===true?'Yes – Licensee below target':atc.gainAchieved===false?'No – Licensee above target':'Not determinable'],
+          ...(atc.licenseeShare>0?[['Licensee Efficiency Savings (2/3 Share)', '₹'+atc.licenseeShare.toFixed(2)+' Lakh']]:[[]])
+        ].filter(r=>r.length>0),
+        styles:{fontSize:9,cellPadding:3},
+        headStyles:{fillColor:[26,53,87],textColor:255,fontStyle:'bold'},
+        columnStyles:{0:{cellWidth:130},1:{cellWidth:40,halign:'right'}},
+        margin:{left:MARGIN,right:MARGIN}
+      });
+      y = doc.lastAutoTable.finalY + 7;
+    }
+
+    // ── SECTION 5: PERENNIAL REJECTIONS ──────────────────────
+    const rejectedItems = STATE.lineItems.filter(i=>i.status==='rejected'&&i.claimed>0);
+    if(rejectedItems.length){
+      checkPage(30);
+      doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text('5. Perennial Rejections', MARGIN, y);
+      y+=2; doc.line(MARGIN, y, MARGIN+38, y); y+=5;
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      rejectedItems.forEach(item=>{
+        const txt = `${item.name}: The licensee has claimed ₹${item.claimed?.toFixed(2)} Lakh under this head. The Commission finds this item to be a perennial rejection. ${item.rejection_reason} Approved amount: ₹0.00 Lakh.`;
+        const lines = doc.splitTextToSize(txt, TEXT_W);
+        checkPage(lines.length*4.5+5);
+        doc.text(lines, MARGIN, y); y += lines.length*4.5+4;
+      });
+      y+=3;
+    }
+
+    // ── SECTION 6: COMMISSION'S DECISION ─────────────────────
+    checkPage(50);
+    const secNum = rejectedItems.length ? '6' : '5';
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text(secNum+'. Commission\'s Decision', MARGIN, y);
+    y+=2; doc.line(MARGIN, y, MARGIN+50, y); y+=5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+
+    const totalDis = STATE.lineItems.reduce((s,i)=>s+(i.disallowed||0),0);
+    let decText = '';
+    if(gap !== null){
+      if(gap > 0){
+        decText = `Based on the analysis of documents submitted by ${STATE.licensee} for Financial Year ${STATE.fy}, the Commission determines that the licensee is entitled to a Revenue Gap of ₹${gap.toFixed(2)} Lakh (Rupees ${numberToWords(gap)} Lakh) for the year ${STATE.fy}. The licensee had claimed a total of ₹${STATE.lineItems.reduce((s,i)=>s+(i.claimed||0),0).toFixed(2)} Lakh, of which ₹${totalDis.toFixed(2)} Lakh has been disallowed following prudence checks and application of KSERC Tariff Regulations 2021. The approved Revenue Gap of ₹${gap.toFixed(2)} Lakh shall be adjusted in the next tariff determination.`;
+      } else {
+        decText = `Based on the analysis of documents submitted by ${STATE.licensee} for Financial Year ${STATE.fy}, the Commission determines that the licensee has a Revenue Surplus of ₹${Math.abs(gap).toFixed(2)} Lakh (Rupees ${numberToWords(Math.abs(gap))} Lakh) for the year ${STATE.fy}. This surplus of ₹${Math.abs(gap).toFixed(2)} Lakh shall be adjusted in the next tariff determination. The licensee had claimed a total of ₹${STATE.lineItems.reduce((s,i)=>s+(i.claimed||0),0).toFixed(2)} Lakh, of which ₹${totalDis.toFixed(2)} Lakh has been disallowed following prudence checks.`;
+      }
+    } else {
+      decText = `Analysis incomplete. Certain mandatory values (Approved ARR, Actual Revenue) could not be extracted from the uploaded documents. Manual verification is required before the Commission can determine the Revenue Gap or Surplus.`;
+    }
+
+    const remarks = document.getElementById('rpt-remarks').value;
+    if(remarks.trim()) decText += '\n\nAdditional Remarks: '+remarks;
+
+    const decLines = doc.splitTextToSize(decText, TEXT_W);
+    doc.text(decLines, MARGIN, y);
+    y += decLines.length*4.5 + 10;
+
+    // ── SIGNATURE ─────────────────────────────────────────────
+    checkPage(40);
+    y += 5;
+    doc.setFontSize(9); doc.setFont('helvetica','italic');
+    doc.text('By Order of the Commission', PAGE_W-MARGIN, y, {align:'right'});
+    y += 15;
+    doc.setLineWidth(0.4);
+    doc.line(PAGE_W-MARGIN-50, y, PAGE_W-MARGIN, y);
+    y += 4;
+    doc.setFont('helvetica','bold');
+    doc.text('Secretary', PAGE_W-MARGIN, y, {align:'right'});
+    y += 4;
+    doc.setFont('helvetica','normal');
+    doc.text('Kerala State Electricity Regulatory Commission', PAGE_W-MARGIN, y, {align:'right'});
+    y += 4;
+    doc.text('Date: '+dateFormatted, PAGE_W-MARGIN, y, {align:'right'});
+
+    // ── FOOTER on each page ───────────────────────────────────
+    const totalPages = doc.internal.getNumberOfPages();
+    for(let i=1;i<=totalPages;i++){
+      doc.setPage(i);
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(150);
+      doc.text('KSERC AI Truing-Up Tool | Work Order KSERC/CSO/03-05 | RIET ISR Project | Generated: '+new Date().toLocaleString('en-IN'), MARGIN, 290);
+      doc.text('Page '+i+' of '+totalPages, PAGE_W-MARGIN, 290, {align:'right'});
+      doc.setTextColor(0);
+    }
+
+    // ── SAVE ──────────────────────────────────────────────────
+    const filename = `KSERC_TruingUp_${STATE.licensee.replace(/[^a-zA-Z0-9]/g,'_')}_${STATE.fy}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+    document.getElementById('pdf-status').innerHTML = `<span style="color:var(--grn);font-weight:600">✓ PDF generated and downloaded: ${filename}</span>`;
+
+  } catch(err){
+    document.getElementById('pdf-status').innerHTML = `<span style="color:var(--red)">Error generating PDF: ${err.message}</span>`;
+    console.error(err);
+  }
+}
+
+// ── HELPER: Number to approximate words ─────────────────────
+function numberToWords(n){
+  n = parseFloat(n);
+  if(isNaN(n)) return 'Unknown';
+  const intPart = Math.floor(n);
+  const dec = Math.round((n - intPart)*100);
+  const words = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function toW(num){
+    if(num===0) return '';
+    if(num<20) return words[num]+' ';
+    return tens[Math.floor(num/10)]+' '+(words[num%10]?words[num%10]+' ':'');
+  }
+  let result='';
+  if(intPart>=100){ result += toW(Math.floor(intPart/100))+'Hundred '; }
+  result += toW(intPart%100);
+  if(dec>0) result += 'Point '+toW(Math.floor(dec/10))+toW(dec%10);
+  return result.trim()||'Zero';
+}
+</script>
+</body>
+</html>

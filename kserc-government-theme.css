@@ -1,0 +1,868 @@
+/*
+ * ============================================================
+ * KSERC GOVERNMENT THEME — Drop-in CSS Override
+ * Target: "Cliché Indian Government Portal" Aesthetic
+ * Compatible with: KSERC AI Truing-Up Tool (any backend)
+ * 
+ * HOW TO USE:
+ *   1. Remove or comment out your existing theme CSS
+ *   2. Import this file LAST in your CSS bundle
+ *      (or in index.html as the final <link> tag)
+ *   3. Ensure your HTML has class names matching below
+ *      OR adapt class selectors to your component names
+ * ============================================================
+ */
+
+/* =============================================
+   0. RESET & BASE
+   ============================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* =============================================
+   1. CSS CUSTOM PROPERTIES
+   ============================================= */
+
+:root {
+  /* Brand */
+  --gov-navy:            #003366;
+  --gov-navy-dark:       #001F4D;
+  --gov-navy-light:      #1B4F8A;
+  --gov-maroon:          #7B1C1C;
+  --gov-saffron:         #FF8C00;
+  --gov-saffron-light:   #FFF3CC;
+  --gov-gold:            #FFD700;
+  --gov-green:           #138808;
+  --gov-red:             #CC0000;
+
+  /* Backgrounds */
+  --bg-page:             #FFFFFF;
+  --bg-sidebar:          #F0F0F0;
+  --bg-header:           #003366;
+  --bg-card:             #FFFFFF;
+  --bg-alt-row:          #F0F5FF;
+  --bg-table-header:     #003366;
+  --bg-section-title:    #1B4F8A;
+  --bg-input:            #FFFFFF;
+  --bg-footer:           #003366;
+
+  /* Borders */
+  --border-default:      #CCCCCC;
+  --border-strong:       #888888;
+  --border-accent:       #FF8C00;
+  --border-nav:          #DDDDDD;
+
+  /* Text */
+  --text-primary:        #1A1A1A;
+  --text-secondary:      #555555;
+  --text-muted:          #888888;
+  --text-on-dark:        #FFFFFF;
+  --text-heading:        #003366;
+  --text-link:           #0000EE;
+  --text-link-visited:   #551A8B;
+  --text-nav:            #1A1A4E;
+
+  /* Typography */
+  --font-heading:        'Georgia', 'Times New Roman', Times, serif;
+  --font-body:           'Arial', Helvetica, sans-serif;
+  --font-mono:           'Courier New', Courier, monospace;
+
+  /* Misc */
+  --radius:              0px;
+  --shadow-card:         1px 1px 3px rgba(0,0,0,0.08);
+}
+
+/* =============================================
+   2. BODY / PAGE BASE
+   ============================================= */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
+
+/* =============================================
+   3. TRICOLOR RIBBON (add .gov-ribbon div in HTML)
+   ============================================= */
+
+.gov-ribbon {
+  height: 5px;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    #FF8C00 33.33%,
+    #FFFFFF 33.33% 66.66%,
+    #138808 66.66%
+  );
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* =============================================
+   4. SKIP LINK (Accessibility)
+   ============================================= */
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--gov-navy);
+  color: #FFFFFF;
+  padding: 8px 16px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  z-index: 9999;
+  transition: top 0.1s;
+  text-decoration: none;
+}
+.skip-link:focus { top: 5px; }
+
+/* =============================================
+   5. HEADER / TOPBAR
+   ============================================= */
+
+/* Override dark topbar */
+header,
+.topbar,
+[class*="topbar"],
+[class*="header"],
+nav[class*="top"] {
+  background: var(--bg-header) !important;
+  border-bottom: 3px solid var(--gov-saffron) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  min-height: 75px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Logo / org name text */
+.logo-title,
+[class*="logo"] h1,
+[class*="org-name"],
+[class*="title"][class*="logo"] {
+  font-family: var(--font-heading) !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: var(--gov-gold) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.logo-subtitle,
+[class*="tagline"],
+[class*="subtitle"][class*="logo"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.75rem !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+
+/* Work order / meta text in header */
+[class*="workorder"],
+[class*="meta"][class*="header"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.68rem !important;
+  color: rgba(255,255,255,0.6) !important;
+}
+
+/* User badge */
+[class*="user-badge"],
+[class*="avatar"] {
+  background: rgba(255,255,255,0.12) !important;
+  border: 1px solid rgba(255,255,255,0.3) !important;
+  color: #FFFFFF !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.8rem !important;
+}
+
+/* Logout button in header */
+[class*="logout"],
+button[class*="logout"] {
+  background: var(--gov-red) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #990000 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.8rem !important;
+  padding: 5px 14px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+[class*="logout"]:hover {
+  background: #990000 !important;
+}
+
+/* =============================================
+   6. LEFT SIDEBAR / NAVIGATION
+   ============================================= */
+
+aside,
+.sidebar,
+[class*="sidebar"],
+[class*="sidenav"],
+nav[class*="side"] {
+  background: var(--bg-sidebar) !important;
+  border-right: 2px solid var(--border-default) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  min-width: 200px;
+  max-width: 220px;
+}
+
+/* Nav section group label */
+[class*="nav-section"],
+[class*="nav-group"],
+[class*="menu-section"] {
+  background: var(--gov-navy) !important;
+  color: #FFFFFF !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 6px 10px !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid #0055A5 !important;
+}
+
+/* Individual nav items */
+.nav-item,
+[class*="nav-item"],
+[class*="menu-item"],
+aside a,
+.sidebar a {
+  display: block !important;
+  color: var(--text-nav) !important;
+  padding: 9px 12px 9px 16px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.83rem !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid var(--border-nav) !important;
+  border-left: 4px solid transparent !important;
+  border-radius: 0 !important;
+  background: #FFFFFF !important;
+  box-shadow: none !important;
+  transition: background 0.08s linear, border-left-color 0.08s linear !important;
+}
+
+.nav-item:hover,
+[class*="nav-item"]:hover,
+aside a:hover,
+.sidebar a:hover {
+  background: #EEF4FF !important;
+  border-left-color: var(--gov-navy-light) !important;
+  color: var(--gov-navy) !important;
+  text-decoration: underline !important;
+}
+
+/* Active nav item */
+.nav-item.active,
+[class*="nav-item"][class*="active"],
+[class*="active"][class*="nav"],
+[aria-current="page"] {
+  background: var(--gov-saffron-light) !important;
+  border-left: 4px solid var(--gov-saffron) !important;
+  color: var(--gov-maroon) !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+}
+
+/* Sidebar footer */
+[class*="sidebar-footer"],
+[class*="sidenav-footer"] {
+  background: #E8E8E8 !important;
+  border-top: 1px solid var(--border-default) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.65rem !important;
+  color: #555555 !important;
+  line-height: 1.6 !important;
+  padding: 10px 12px !important;
+}
+
+/* =============================================
+   7. MAIN CONTENT AREA
+   ============================================= */
+
+main,
+.main-content,
+[class*="main-content"],
+[class*="content-area"],
+[id="main-content"] {
+  background: var(--bg-page) !important;
+  padding: 16px 20px !important;
+  color: var(--text-primary) !important;
+}
+
+/* Breadcrumb */
+.breadcrumb,
+[class*="breadcrumb"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.78rem !important;
+  color: var(--text-secondary) !important;
+  padding: 6px 10px !important;
+  background: #F5F5F5 !important;
+  border: 1px solid var(--border-default) !important;
+  border-left: 3px solid var(--gov-saffron) !important;
+  border-radius: 0 !important;
+  margin-bottom: 12px !important;
+}
+.breadcrumb a { color: var(--text-link) !important; text-decoration: underline !important; }
+.breadcrumb a:visited { color: var(--text-link-visited) !important; }
+
+/* Page title */
+h1,
+.page-title,
+[class*="page-title"] {
+  font-family: var(--font-heading) !important;
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+  color: var(--text-heading) !important;
+  border-bottom: 2px solid var(--gov-navy) !important;
+  padding-bottom: 8px !important;
+  margin-bottom: 12px !important;
+  background: transparent !important;
+}
+
+/* Page subtitle */
+.page-subtitle,
+[class*="page-subtitle"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.8rem !important;
+  color: var(--text-secondary) !important;
+  font-style: italic !important;
+}
+
+/* Section headings */
+h2,
+.section-heading,
+[class*="section-heading"],
+[class*="section-title"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  background: var(--bg-section-title) !important;
+  padding: 6px 12px !important;
+  margin: 16px 0 8px 0 !important;
+  border-left: 4px solid var(--gov-saffron) !important;
+  border-radius: 0 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+h3 {
+  font-family: var(--font-body) !important;
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  color: var(--gov-navy) !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  padding-bottom: 4px !important;
+}
+
+/* Body text */
+p, li, td, dd {
+  font-family: var(--font-body) !important;
+  font-size: 0.83rem !important;
+  color: var(--text-primary) !important;
+}
+
+/* Hyperlinks */
+a {
+  color: var(--text-link) !important;
+  text-decoration: underline !important;
+}
+a:visited { color: var(--text-link-visited) !important; }
+a:hover { color: var(--gov-maroon) !important; }
+
+/* =============================================
+   8. CARDS / PANELS
+   ============================================= */
+
+.card,
+[class*="card"],
+[class*="panel"],
+[class*="widget"] {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: none !important;
+  padding: 14px 16px !important;
+  margin-bottom: 12px !important;
+}
+
+/* Card header bar */
+.card-header,
+[class*="card-header"],
+[class*="panel-header"] {
+  background: var(--gov-navy) !important;
+  color: #FFFFFF !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  padding: 7px 12px !important;
+  margin: -14px -16px 12px -16px !important;
+  border-radius: 0 !important;
+  border-bottom: 2px solid var(--gov-saffron) !important;
+}
+
+/* Notice boxes */
+.notice-box, [class*="notice"], [class*="alert"] {
+  background: #FFFDE7 !important;
+  border: 1px solid #F9A825 !important;
+  border-left: 4px solid var(--gov-saffron) !important;
+  border-radius: 0 !important;
+  padding: 10px 14px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.82rem !important;
+  color: #5D4037 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[class*="alert"][class*="info"], [class*="notice"][class*="info"] {
+  background: #E3F2FD !important;
+  border-color: var(--gov-navy-light) !important;
+  border-left-color: var(--gov-navy) !important;
+  color: #0D3050 !important;
+}
+
+[class*="alert"][class*="success"], [class*="notice"][class*="success"] {
+  background: #E8F5E9 !important;
+  border-color: #2E7D32 !important;
+  border-left-color: var(--gov-green) !important;
+  color: #1B5E20 !important;
+}
+
+[class*="alert"][class*="error"],
+[class*="alert"][class*="danger"],
+[class*="notice"][class*="error"] {
+  background: #FFEBEE !important;
+  border-color: #C62828 !important;
+  border-left-color: var(--gov-red) !important;
+  color: var(--gov-maroon) !important;
+}
+
+/* =============================================
+   9. BUTTONS
+   ============================================= */
+
+/* Nuke all existing button styling */
+button,
+[class*="btn"],
+[class*="button"],
+[role="button"] {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+  font-family: var(--font-body) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  transition: background 0.08s linear !important;
+  cursor: pointer !important;
+}
+
+/* Primary button */
+.btn-primary,
+[class*="btn-primary"],
+[class*="button-primary"] {
+  background: var(--gov-navy-light) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--gov-navy) !important;
+  padding: 7px 18px !important;
+  font-size: 0.83rem !important;
+}
+.btn-primary:hover,
+[class*="btn-primary"]:hover { background: var(--gov-navy) !important; }
+
+/* Action / Start button */
+.btn-action,
+[class*="btn-action"],
+button[class*="start"],
+button[class*="submit"] {
+  background: var(--gov-saffron) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #CC7000 !important;
+  padding: 8px 20px !important;
+  font-size: 0.85rem !important;
+}
+.btn-action:hover,
+[class*="btn-action"]:hover { background: #CC7000 !important; }
+
+/* Secondary button */
+.btn-secondary,
+[class*="btn-secondary"],
+[class*="button-secondary"] {
+  background: #FFFFFF !important;
+  color: var(--gov-navy) !important;
+  border: 1px solid var(--gov-navy) !important;
+  padding: 7px 18px !important;
+  font-size: 0.83rem !important;
+}
+.btn-secondary:hover { background: #EEF4FF !important; }
+
+/* Danger button */
+.btn-danger,
+[class*="btn-danger"],
+[class*="btn-delete"] {
+  background: var(--gov-red) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #990000 !important;
+  padding: 7px 18px !important;
+}
+.btn-danger:hover { background: #990000 !important; }
+
+/* Active press state for all buttons */
+button:active, [class*="btn"]:active {
+  transform: translateY(1px) !important;
+}
+
+/* =============================================
+   10. TABLES
+   ============================================= */
+
+table,
+.data-table,
+[class*="data-table"],
+[class*="results-table"] {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1px solid #AAAAAA !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.82rem !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  margin-bottom: 16px !important;
+}
+
+thead, table thead { background: var(--bg-table-header) !important; }
+
+th {
+  padding: 8px 10px !important;
+  text-align: left !important;
+  font-weight: 700 !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.78rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  border: 1px solid #0055A5 !important;
+  color: #FFFFFF !important;
+  background: transparent !important;
+}
+
+td {
+  padding: 7px 10px !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-primary) !important;
+  vertical-align: top !important;
+  background: transparent !important;
+}
+
+tbody tr:nth-child(even) { background: var(--bg-alt-row) !important; }
+tbody tr:nth-child(odd)  { background: #FFFFFF !important; }
+
+tbody tr:hover { background: var(--gov-saffron-light) !important; }
+
+/* Numeric cells */
+td.numeric, th.numeric {
+  text-align: right !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.78rem !important;
+}
+
+/* Total row */
+tr.total-row td {
+  background: var(--gov-navy) !important;
+  color: var(--gov-gold) !important;
+  font-weight: 700 !important;
+  border-top: 2px solid var(--gov-saffron) !important;
+}
+
+/* Status badges */
+.badge-compliant {
+  background: var(--gov-green) !important;
+  color: #FFFFFF !important;
+  padding: 2px 7px !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  font-family: var(--font-body) !important;
+  border-radius: 0 !important;
+}
+.badge-deviation {
+  background: var(--gov-red) !important;
+  color: #FFFFFF !important;
+  padding: 2px 7px !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  border-radius: 0 !important;
+}
+.badge-pending {
+  background: var(--gov-saffron) !important;
+  color: #FFFFFF !important;
+  padding: 2px 7px !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  border-radius: 0 !important;
+}
+
+/* =============================================
+   11. FORM ELEMENTS
+   ============================================= */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="file"],
+select,
+textarea {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 0 !important;
+  color: var(--text-primary) !important;
+  padding: 6px 10px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.83rem !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--gov-navy) !important;
+  outline: 2px solid #6699CC !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
+label {
+  display: block !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: var(--text-nav) !important;
+  margin-bottom: 3px !important;
+}
+
+/* Upload / drop zone */
+.upload-zone,
+[class*="upload-zone"],
+[class*="drop-zone"],
+[class*="dropzone"] {
+  border: 2px dashed var(--border-strong) !important;
+  background: #F9F9F9 !important;
+  border-radius: 0 !important;
+  padding: 30px 20px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.85rem !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: background 0.08s, border-color 0.08s !important;
+}
+.upload-zone:hover,
+[class*="drop-zone"]:hover {
+  background: #EEF4FF !important;
+  border-color: var(--gov-navy) !important;
+  color: var(--gov-navy) !important;
+}
+[class*="drag-active"],
+.upload-zone.active {
+  background: var(--gov-saffron-light) !important;
+  border-color: var(--gov-saffron) !important;
+  border-style: solid !important;
+}
+
+/* =============================================
+   12. LOADING STATES
+   ============================================= */
+
+[class*="loading"],
+[class*="spinner"],
+[class*="skeleton"] {
+  backdrop-filter: none !important;
+}
+
+/* Government spinner */
+.gov-spinner,
+[class*="spinner"] {
+  width: 32px !important;
+  height: 32px !important;
+  border: 4px solid #CCCCCC !important;
+  border-top-color: var(--gov-navy) !important;
+  border-radius: 50% !important;
+  animation: govSpin 0.8s linear infinite !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@keyframes govSpin {
+  to { transform: rotate(360deg); }
+}
+
+[class*="loading-text"],
+[class*="loading"] p {
+  font-family: var(--font-body) !important;
+  font-size: 0.85rem !important;
+  color: var(--gov-navy) !important;
+  font-weight: 700 !important;
+}
+
+/* =============================================
+   13. FOOTER
+   ============================================= */
+
+footer,
+.page-footer,
+[class*="footer"] {
+  background: var(--gov-navy) !important;
+  color: rgba(255,255,255,0.85) !important;
+  padding: 14px 20px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.75rem !important;
+  border-top: 3px solid var(--gov-saffron) !important;
+}
+
+[class*="footer"] a {
+  color: #ADD8E6 !important;
+  text-decoration: underline !important;
+}
+[class*="footer"] a:hover { color: #FFFFFF !important; }
+
+[class*="footer-org"],
+[class*="footer"] strong {
+  color: var(--gov-gold) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* =============================================
+   14. ANIMATIONS — OVERRIDE TO MINIMAL
+   ============================================= */
+
+/* Kill all glow / scale / gradient animations */
+@keyframes pulse { from, to { opacity: 1; } }
+@keyframes glow  { from, to { box-shadow: none; } }
+@keyframes shimmer { from, to { background-position: 0; } }
+
+/* Page fade only */
+.page-enter,
+[class*="page-enter"],
+[class*="route-enter"] {
+  animation: govFadeIn 0.15s ease-in !important;
+}
+
+@keyframes govFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Kill hover transforms (scale, translateY on cards etc.) */
+[class*="card"]:hover,
+[class*="panel"]:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+/* =============================================
+   15. SCROLLBAR (Government Utilitarian)
+   ============================================= */
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #EEEEEE; }
+::-webkit-scrollbar-thumb { background: #999999; border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--gov-navy); }
+
+/* =============================================
+   16. CODE / MONOSPACE (Regulatory values)
+   ============================================= */
+
+code, pre, kbd,
+[class*="code"],
+[class*="mono"] {
+  font-family: var(--font-mono) !important;
+  font-size: 0.8rem !important;
+  background: #F5F5F5 !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-primary) !important;
+  border-radius: 0 !important;
+  padding: 2px 6px !important;
+}
+
+/* =============================================
+   17. MODAL / DIALOG
+   ============================================= */
+
+[class*="modal"],
+[class*="dialog"],
+[role="dialog"] {
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.25) !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--border-default) !important;
+  background: #FFFFFF !important;
+}
+
+[class*="modal-header"],
+[class*="dialog-header"] {
+  background: var(--gov-navy) !important;
+  color: #FFFFFF !important;
+  border-radius: 0 !important;
+  border-bottom: 2px solid var(--gov-saffron) !important;
+  font-family: var(--font-body) !important;
+  font-weight: 700 !important;
+}
+
+[class*="modal-overlay"],
+[class*="dialog-overlay"],
+[class*="backdrop"] {
+  background: rgba(0,0,0,0.5) !important;
+  backdrop-filter: none !important;
+}
+
+/* =============================================
+   18. RESPONSIVE — MOBILE GOV PORTAL
+   ============================================= */
+
+@media (max-width: 768px) {
+  aside, .sidebar, [class*="sidebar"] {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 2px solid var(--border-default) !important;
+  }
+  header, .topbar, [class*="topbar"] {
+    min-height: 60px !important;
+  }
+  .logo-title, [class*="logo"] h1 {
+    font-size: 0.9rem !important;
+  }
+}
+
+/*
+ * ============================================================
+ * END — KSERC Government Theme
+ * ============================================================
+ */
